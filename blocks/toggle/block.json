@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/toggle",
+  "title": "Toggle / Accordion",
+  "category": "design",
+  "icon": "list-view",
+  "description": "Sección de acordeón con título, botón y items (título, texto e imagen).",
+  "style": "file:./style.css",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "html": false
+  },
+  "keywords": ["toggle", "accordion", "desplegable"]
+}

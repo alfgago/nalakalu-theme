@@ -1,0 +1,145 @@
+*{
+  padding:0;
+  margin:0;
+  text-decoration:none;
+}
+
+.featured-section{
+  display:flex;
+  flex-direction:column;
+  padding:5rem 3rem;
+}
+
+.row1{
+  display:flex;
+  flex-direction:row;
+  justify-content:space-around;
+  gap:2rem;
+  margin-bottom: 2rem;
+}
+
+.headline{
+  font-family:'Space Mono', monospace;
+  font-size:1rem;
+}
+
+.title{
+  font-size:54px;
+  font-weight:300;
+}
+
+/* Botón arriba a la derecha */
+.product-link{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.8rem 1.1rem;
+  border:1px solid #3D332B;
+  border-radius:5px;
+  text-decoration:none;
+  font-family:'Space Mono', monospace;
+  font-size:1rem;
+  color:#3D332B;
+  line-height:1;
+  transition:.4s all;
+  z-index:5;
+
+}
+.product-link:hover{
+  background:#333;
+  color:#fff;
+}
+
+.column1{
+  display:flex;
+  flex-direction:column;
+  width:70%;
+  gap:2rem;
+}
+
+.column2{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  width:30%;
+  gap:2rem;
+}
+
+.description{
+  color:#919191;
+  font-size:1rem;
+  font-weight:400;
+  text-align:right;
+  max-width:30rem;
+
+}
+
+/* Fila de producto */
+.product-row-link{
+  display:block;
+  color:inherit;
+}
+
+.row-products{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  padding:1.5rem 0;
+  border-bottom:1px solid #c3c3c3;
+}
+
+.products-column1{
+  display:flex;
+  width:40%;
+}
+
+.product-title{
+  font-size:28px;
+  color:#3D332B;
+  font-weight:400;
+  text-align:left;
+  transition:.3s all;
+}
+
+.products-column2{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  width:60%;
+  gap:12rem;
+  font-weight:300;
+}
+
+.product-description{
+  font-family:'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-size:16px;
+  color:#555;
+  transition:.3s all;
+  max-width:34ch;
+   line-height: 1.6;              
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  max-height: calc(1.6em * 5); 
+  word-break: break-word;
+  margin:0;
+}
+
+.product-image{
+  width:10rem;
+  height:10rem;
+  object-fit:cover;
+  border-radius:10px;
+  transition:.3s all;
+}
+
+.featured-section .product-row-link:last-of-type .row-products{
+  border-bottom: 0;
+}
+
+/* Hover sutil */
+.row-products:hover .product-description{ transform:scale(1.03); }
+.row-products:hover .product-title{ transform:scale(1.03); }
+.row-products:hover .product-image{ transform:scale(1.05); }

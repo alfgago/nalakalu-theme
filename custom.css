@@ -1,26 +1,3 @@
-{
-  "apiVersion": 2,
-  "name": "mytheme/hero-block",
-  "title": "Hero Block",
-  "category": "layout",
-  "icon": "cover-image",
-  "description": "A hero section with background image, title and description.",
-  "editorScript": "file:./edit.js",
-  "editorStyle": "file:./editor.css",
-  "style": "file:./style.css",
-  "render": "file:./index.php",
-  "attributes": {
-    "title": {
-      "type": "string",
-      "default": "Hero Title"
-    },
-    "description": {
-      "type": "string",
-      "default": "This is your hero description text."
-    },
-    "backgroundImage": {
-      "type": "string",
-      "default": ""
-    }
-  }
+html, body {
+  font-size: clamp(12px, 0.9vw, 20px);
 }

@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/featured",
+  "title": "Featured",
+  "category": "design",
+  "icon": "star-filled",
+  "description": "Muestra productos destacados de WooCommerce con título y descripción.",
+  "style": "file:./style.css",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "html": false
+  },
+  "keywords": ["featured", "destacados", "woocommerce", "productos"]
+}

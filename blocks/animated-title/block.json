@@ -1,0 +1,17 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu-animated-title",
+  "title": "Animated Title + Image",
+  "category": "nalakalu",
+  "icon": "format-image",
+  "description": "Título animado en 4 posiciones (top/left/right/bottom) + imagen.",
+  "style": "file:./style.css",
+  "editorStyle": "file:./editor.css",
+  "viewScript": "file:./script.js",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["full", "wide"],
+    "anchor": false,
+    "html": false
+  }
+}

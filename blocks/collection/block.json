@@ -1,0 +1,15 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/collection",
+  "title": "Collection",
+  "category": "design",
+  "icon": "screenoptions",
+  "description": "Hero de colección + último producto destacado + carrusel filtrado por la taxonomía Colección.",
+  "style": "file:./style.css",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "html": false
+  }
+}

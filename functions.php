@@ -226,3 +226,17 @@ add_action('acf/init', function () {
         }
     }
 });
+
+
+// Encolar custom.css del tema (o child theme) con cache-busting
+add_action('wp_enqueue_scripts', function () {
+    $rel_path = '/custom.css'; // mismo nivel que functions.php
+    $file_path = get_stylesheet_directory() . $rel_path;
+    $file_uri  = get_stylesheet_directory_uri() . $rel_path;
+
+    if ( file_exists( $file_path ) ) {
+        $ver = filemtime( $file_path ); // cache-busting por timestamp
+        wp_enqueue_style('custom-css', $file_uri, [], $ver, 'all');
+    }
+}, 100); // prioridad alta para que cargue al final
+

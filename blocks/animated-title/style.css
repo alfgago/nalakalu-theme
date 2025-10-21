@@ -1,0 +1,181 @@
+ *{
+     margin:0;
+ }
+ 
+.animated-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    width: 60vw;
+    margin-right: auto;
+    margin-left: auto;
+    padding-bottom: 4rem;
+    padding-top: 4rem;
+    max-width:75rem;
+}
+
+.title-row{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items:center;
+    gap:2rem;
+}
+
+.title-row.first{
+    padding-left: 1rem;
+}
+
+
+.title-row.third{
+    padding-left: 1rem;
+    padding-right: 2rem;
+    justify-content:space-around;
+}
+
+.animated.text{
+    font-family: 'Matter';
+    font-size: 1rem;
+    color: #3D332B;
+    margin:0;
+    padding:0;
+    max-width:25rem;
+}
+
+.animated.heading{
+    font-family: 'Display';
+    font-weight: 500;
+    font-size: 8rem;
+    color: #3D332B;
+    line-height: 7rem;
+}
+
+.animated.image{
+    width: 100%;
+    height: 127px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+
+
+/* Animaciones */
+
+.animated-title {
+  --easing: cubic-bezier(.22,.61,.36,1);
+  --dur-img: 900ms;
+  --dur-text: 700ms;
+}
+
+/* Stagger por fila (puede editarse por necesidad) */
+.animated-title .title-row .animated:nth-child(1) { --d: 0ms; }
+.animated-title .title-row .animated:nth-child(2) { --d: 120ms; }
+.animated-title .title-row .animated:nth-child(3) { --d: 240ms; }
+.animated-title .title-row .animated:nth-child(4) { --d: 360ms; }
+
+/* Estados iniciales + animaciones */
+.animated.image {
+  /* oculto de izq→der + leve zoom */
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  -webkit-clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  opacity: 0;
+  transform: scale(1.03);
+  animation: ati-reveal-x var(--dur-img) var(--easing) forwards;
+  animation-delay: var(--d, 0ms);
+  will-change: clip-path, transform, opacity;
+}
+
+.animated.heading,
+.animated.text {
+  /* oculto desde abajo */
+  clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+  -webkit-clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+  opacity: 0;
+  transform: translateY(14px);
+  animation: ati-reveal-y var(--dur-text) var(--easing) forwards;
+  animation-delay: var(--d, 0ms);
+  will-change: clip-path, transform, opacity;
+}
+
+.animated-title .cta{
+   display:inline-flex; align-items:center; gap:.5rem;
+  padding:.8rem 1.1rem; border:1px solid #3D332B; border-radius:5px;
+  text-decoration:none; font-family:'Space Mono', monospace; font-size:1rem;
+  color:#3D332B; line-height:1; transition:.4s all; z-index:5;
+}
+
+.animated-title .cta:hover{
+  background:#E3D1BA;
+  border: 1px solid #E3D1BA;
+}
+
+
+
+.animated-title .cta:hover{ transform:translateY(-1px); }
+.animated-title .cta:active{ transform:translateY(0); }
+.animated-title .cta-arrow{ width:20px; height:20px; object-fit:contain; }
+
+
+/* Keyframes */
+@keyframes ati-reveal-x {
+  from {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    -webkit-clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ati-reveal-y {
+  from {
+    clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+    -webkit-clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* - Ver solo en el viewport -
+.animated-title {
+  view-timeline-name: --atitle;
+  view-timeline-axis: block;
+}
+
+.animated-title .animated.image {
+  animation-timeline: --atitle;
+  animation-range: entry 0% cover 40%;
+}
+
+.animated-title .animated.heading,
+.animated-title .animated.text {
+  animation-timeline: --atitle;
+  animation-range: entry 0% cover 25%;
+}
+
+*/
+
+
+@media (prefers-reduced-motion: reduce) {
+  .animated.image,
+  .animated.heading,
+  .animated.text {
+    animation: none !important;
+    clip-path: polygon(0 0,100% 0,100% 100%,0 100%) !important;
+    -webkit-clip-path: polygon(0 0,100% 0,100% 100%,0 100%) !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
