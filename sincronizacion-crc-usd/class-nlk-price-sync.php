@@ -56,13 +56,14 @@ class NLK_Price_Sync {
 
 		$precio_usd = self::convert_crc_to_usd( $precio_crc, $tc );
 
+		// NUNCA escribir precio USD en 0 — proteger el precio existente
+		if ( $precio_usd <= 0 ) {
+			return;
+		}
+
 		// Actualizar campos estándar de WooCommerce
 		update_post_meta( $product_id, '_regular_price', $precio_usd );
 		update_post_meta( $product_id, '_price', $precio_usd );
-
-		// Si el producto tiene precio de oferta (sale), no lo tocamos.
-		// El _price de WC ya se maneja: si hay _sale_price activo, WC usa ese.
-		// Nosotros solo actualizamos _regular_price y _price base.
 
 		// Limpiar cache de WooCommerce para este producto
 		$product = wc_get_product( $product_id );
@@ -127,6 +128,12 @@ class NLK_Price_Sync {
 			}
 
 			$precio_usd = self::convert_crc_to_usd( $precio_crc, $tc );
+
+			// NUNCA escribir precio USD en 0 — proteger el precio existente
+			if ( $precio_usd <= 0 ) {
+				$skipped++;
+				continue;
+			}
 
 			update_post_meta( $product_id, '_regular_price', $precio_usd );
 			update_post_meta( $product_id, '_price', $precio_usd );
