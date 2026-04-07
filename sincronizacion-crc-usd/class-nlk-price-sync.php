@@ -12,6 +12,7 @@ class NLK_Price_Sync {
 	public static function init() {
 		// AJAX: actualización masiva manual desde admin
 		add_action( 'wp_ajax_nlk_crc_usd_sync_all', array( __CLASS__, 'ajax_sync_all' ) );
+		add_action( 'wp_ajax_nlk_crc_usd_backfill', array( __CLASS__, 'ajax_backfill' ) );
 	}
 
 	/**
@@ -35,6 +36,11 @@ class NLK_Price_Sync {
 	 * @param float $precio_crc Precio en colones. Si 0, lo lee del meta.
 	 */
 	public static function sync_single_product( $product_id, $precio_crc = 0 ) {
+		// Respetar flag de precio USD fijo
+		if ( get_post_meta( $product_id, NLK_Product_Meta::FIXED_USD_KEY, true ) === 'yes' ) {
+			return;
+		}
+
 		if ( $precio_crc <= 0 ) {
 			$precio_crc = floatval( get_post_meta( $product_id, NLK_Product_Meta::META_KEY, true ) );
 		}
@@ -114,6 +120,12 @@ class NLK_Price_Sync {
 				continue;
 			}
 
+			// Respetar flag de precio USD fijo
+			if ( get_post_meta( $product_id, NLK_Product_Meta::FIXED_USD_KEY, true ) === 'yes' ) {
+				$skipped++;
+				continue;
+			}
+
 			$precio_usd = self::convert_crc_to_usd( $precio_crc, $tc );
 
 			update_post_meta( $product_id, '_regular_price', $precio_usd );
@@ -149,6 +161,98 @@ class NLK_Price_Sync {
 		}
 
 		$result = self::sync_all_products();
+		wp_send_json( $result );
+	}
+
+	/**
+	 * Carga inicial: calcula _precio_crc a partir de precios USD existentes.
+	 *
+	 * Solo afecta productos que tienen _price pero NO tienen _precio_crc.
+	 * Fórmula inversa: CRC = USD × tipo_cambio
+	 *
+	 * @return array Resultado con conteo.
+	 */
+	public static function backfill_crc_from_usd() {
+		$tc = NLK_Exchange_Rate::get_active_rate();
+
+		if ( $tc <= 0 ) {
+			return array(
+				'success' => false,
+				'message' => 'No hay tipo de cambio configurado. Defínalo antes de ejecutar la carga inicial.',
+				'filled'  => 0,
+				'skipped' => 0,
+			);
+		}
+
+		global $wpdb;
+
+		// Productos/variaciones que tienen _price pero NO tienen _precio_crc (o es 0/vacío)
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT pm.post_id, pm.meta_value AS usd_price
+				 FROM {$wpdb->postmeta} pm
+				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				 WHERE pm.meta_key = '_price'
+				   AND pm.meta_value > 0
+				   AND p.post_type IN ('product', 'product_variation')
+				   AND p.post_status IN ('publish', 'draft', 'private')
+				   AND pm.post_id NOT IN (
+				       SELECT post_id FROM {$wpdb->postmeta}
+				       WHERE meta_key = %s AND meta_value > 0
+				   )",
+				NLK_Product_Meta::META_KEY
+			)
+		);
+
+		$filled  = 0;
+		$skipped = 0;
+
+		foreach ( $results as $row ) {
+			$product_id = intval( $row->post_id );
+			$usd_price  = floatval( $row->usd_price );
+
+			if ( $usd_price <= 0 ) {
+				$skipped++;
+				continue;
+			}
+
+			// Saltar productos marcados como USD fijo
+			if ( get_post_meta( $product_id, NLK_Product_Meta::FIXED_USD_KEY, true ) === 'yes' ) {
+				$skipped++;
+				continue;
+			}
+
+			$precio_crc = round( $usd_price * $tc, 2 );
+			update_post_meta( $product_id, NLK_Product_Meta::META_KEY, $precio_crc );
+
+			$filled++;
+		}
+
+		return array(
+			'success' => true,
+			'message' => sprintf(
+				'Carga inicial completada. %d productos rellenados con precio CRC (T/C: ₡%s), %d omitidos.',
+				$filled,
+				number_format( $tc, 2 ),
+				$skipped
+			),
+			'filled'  => $filled,
+			'skipped' => $skipped,
+			'tc_used' => $tc,
+		);
+	}
+
+	/**
+	 * Handler AJAX para backfill.
+	 */
+	public static function ajax_backfill() {
+		check_ajax_referer( 'nlk_crc_usd_sync', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => 'No tiene permisos suficientes.' ) );
+		}
+
+		$result = self::backfill_crc_from_usd();
 		wp_send_json( $result );
 	}
 }

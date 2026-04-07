@@ -12,7 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class NLK_Product_Meta {
 
-	const META_KEY = '_precio_crc';
+	const META_KEY       = '_precio_crc';
+	const FIXED_USD_KEY  = '_nlk_fixed_usd';
 
 	public static function init() {
 		// Campo en producto simple
@@ -49,6 +50,12 @@ class NLK_Product_Meta {
 			),
 		) );
 
+		woocommerce_wp_checkbox( array(
+			'id'          => self::FIXED_USD_KEY,
+			'label'       => 'Precio USD fijo',
+			'description' => 'No sincronizar desde CRC — mantener el precio USD tal como está.',
+		) );
+
 		echo '</div>';
 	}
 
@@ -63,7 +70,12 @@ class NLK_Product_Meta {
 		$precio_crc = floatval( sanitize_text_field( wp_unslash( $_POST[ self::META_KEY ] ) ) );
 		update_post_meta( $post_id, self::META_KEY, $precio_crc );
 
-		if ( $precio_crc > 0 ) {
+		// Guardar checkbox de precio USD fijo
+		$fixed = isset( $_POST[ self::FIXED_USD_KEY ] ) ? 'yes' : 'no';
+		update_post_meta( $post_id, self::FIXED_USD_KEY, $fixed );
+
+		// Solo sincronizar si no está marcado como USD fijo
+		if ( $fixed !== 'yes' && $precio_crc > 0 ) {
 			NLK_Price_Sync::sync_single_product( $post_id, $precio_crc );
 		}
 	}
@@ -73,6 +85,7 @@ class NLK_Product_Meta {
 	 */
 	public static function render_crc_field_variation( $loop, $variation_data, $variation ) {
 		$value = get_post_meta( $variation->ID, self::META_KEY, true );
+		$fixed = get_post_meta( $variation->ID, self::FIXED_USD_KEY, true );
 		?>
 		<div class="variable_pricing">
 			<p class="form-row form-row-first">
@@ -82,6 +95,14 @@ class NLK_Product_Meta {
 					value="<?php echo esc_attr( $value ); ?>"
 					step="0.01" min="0"
 					class="short" />
+			</p>
+			<p class="form-row form-row-last">
+				<label>
+					<input type="checkbox"
+						name="<?php echo esc_attr( self::FIXED_USD_KEY . '_variation[' . $loop . ']' ); ?>"
+						value="yes" <?php checked( $fixed, 'yes' ); ?> />
+					<?php esc_html_e( 'Precio USD fijo', 'nalakalu' ); ?>
+				</label>
 			</p>
 		</div>
 		<?php
@@ -99,7 +120,12 @@ class NLK_Product_Meta {
 		$precio_crc = floatval( sanitize_text_field( wp_unslash( $_POST[ $field_name ][ $loop ] ) ) );
 		update_post_meta( $variation_id, self::META_KEY, $precio_crc );
 
-		if ( $precio_crc > 0 ) {
+		// Guardar checkbox de precio USD fijo para variación
+		$fixed_field = self::FIXED_USD_KEY . '_variation';
+		$fixed = isset( $_POST[ $fixed_field ][ $loop ] ) ? 'yes' : 'no';
+		update_post_meta( $variation_id, self::FIXED_USD_KEY, $fixed );
+
+		if ( $fixed !== 'yes' && $precio_crc > 0 ) {
 			NLK_Price_Sync::sync_single_product( $variation_id, $precio_crc );
 		}
 	}
@@ -123,6 +149,12 @@ class NLK_Product_Meta {
 	 */
 	public static function render_crc_column( $column, $post_id ) {
 		if ( $column !== 'precio_crc' ) {
+			return;
+		}
+
+		$fixed = get_post_meta( $post_id, self::FIXED_USD_KEY, true );
+		if ( $fixed === 'yes' ) {
+			echo '<span title="Este producto usa precio USD fijo">USD fijo</span>';
 			return;
 		}
 

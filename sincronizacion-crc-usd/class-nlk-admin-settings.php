@@ -105,6 +105,17 @@ class NLK_Admin_Settings {
 				add_settings_error( 'nlk_crc_usd', 'sync_error', $result['message'], 'error' );
 			}
 		}
+
+		// Carga inicial: backfill CRC desde USD existentes
+		if ( isset( $_GET['nlk_action'] ) && $_GET['nlk_action'] === 'backfill' ) {
+			check_admin_referer( 'nlk_crc_usd_backfill' );
+			$result = NLK_Price_Sync::backfill_crc_from_usd();
+			if ( $result['success'] ) {
+				add_settings_error( 'nlk_crc_usd', 'backfill_ok', $result['message'], 'success' );
+			} else {
+				add_settings_error( 'nlk_crc_usd', 'backfill_error', $result['message'], 'error' );
+			}
+		}
 	}
 
 	/**
@@ -155,6 +166,36 @@ class NLK_Admin_Settings {
 			'nlk_crc_usd_sync_all'
 		);
 
+		$backfill_url = wp_nonce_url(
+			admin_url( 'admin.php?page=' . self::PAGE_SLUG . '&nlk_action=backfill' ),
+			'nlk_crc_usd_backfill'
+		);
+
+		// Conteos para info
+		global $wpdb;
+		$total_products = (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE p.post_type IN ('product','product_variation')
+			   AND p.post_status IN ('publish','draft','private')
+			   AND pm.meta_key = '_price' AND pm.meta_value > 0"
+		);
+		$with_crc = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta}
+				 WHERE meta_key = %s AND meta_value > 0",
+				NLK_Product_Meta::META_KEY
+			)
+		);
+		$fixed_usd_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta}
+				 WHERE meta_key = %s AND meta_value = 'yes'",
+				NLK_Product_Meta::FIXED_USD_KEY
+			)
+		);
+		$without_crc = max( 0, $total_products - $with_crc );
+
 		?>
 		<div class="wrap">
 			<h1>Sincronización CRC → USD</h1>
@@ -194,6 +235,18 @@ class NLK_Admin_Settings {
 							<th>Productos actualizados (última vez)</th>
 							<td><?php echo esc_html( $productos_act ); ?></td>
 						</tr>
+						<tr>
+							<th>Productos con precio CRC</th>
+							<td><?php echo esc_html( $with_crc ); ?> de <?php echo esc_html( $total_products ); ?></td>
+						</tr>
+						<tr>
+							<th>Productos sin precio CRC</th>
+							<td><?php echo esc_html( $without_crc ); ?></td>
+						</tr>
+						<tr>
+							<th>Productos con USD fijo</th>
+							<td><?php echo esc_html( $fixed_usd_count ); ?></td>
+						</tr>
 					</tbody>
 				</table>
 
@@ -206,6 +259,20 @@ class NLK_Admin_Settings {
 						Sincronizar todos los productos
 					</a>
 				</p>
+
+				<?php if ( $without_crc > 0 ) : ?>
+				<hr style="margin:15px 0;" />
+				<h3 style="margin-top:0;">Carga inicial de precios CRC</h3>
+				<p class="description" style="margin-bottom:10px;">
+					Hay <strong><?php echo esc_html( $without_crc ); ?> productos</strong> con precio USD pero sin precio en colones.
+					Esta acción calcula el precio CRC a partir del precio USD actual usando el tipo de cambio activo
+					(CRC = USD &times; T/C). Solo afecta productos que no tienen precio CRC y que no están marcados como "USD fijo".
+				</p>
+				<a href="<?php echo esc_url( $backfill_url ); ?>" class="button"
+				   onclick="return confirm('¿Rellenar precio CRC para <?php echo esc_attr( $without_crc ); ?> productos sin CRC? Esto NO cambia el precio USD.');">
+					Rellenar precios CRC desde USD existente
+				</a>
+				<?php endif; ?>
 			</div>
 
 			<!-- Formulario de configuración -->
