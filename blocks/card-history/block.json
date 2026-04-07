@@ -1,0 +1,16 @@
+{
+  "name": "nalakalu/card-history",
+  "title": "Card History",
+  "description": "Secciones de historia con imagen y contenido.",
+  "category": "design",
+  "icon": "slides",
+  "apiVersion": 2,
+  "keywords": ["history", "cards", "timeline"],
+  "supports": {
+    "align": ["", "wide", "full"],
+    "anchor": true,
+    "customClassName": true
+  },
+  "style": "file:./style.css",
+  "render": "file:./index.php"
+}

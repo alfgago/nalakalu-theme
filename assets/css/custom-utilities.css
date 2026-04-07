@@ -1,0 +1,497 @@
+/* Nalakalu Theme - Global Styles & Utilities */
+
+/* ========================================
+   CSS RESET & BASE STYLES
+   ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 10px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: Matter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #3D332B;
+  background-color: #FFF;
+}
+
+::selection {
+  background-color: #E3D1BA;
+  color: #3D332B;
+}
+
+/* ========================================
+   CSS VARIABLES
+   ======================================== */
+   
+   
+
+:root {
+  --color-cafe: #3D332B;
+  --color-white: #FFF;
+  --color-blanco-hueso: #FFF7ED;
+  --color-beige: #E3D1BA;
+  --color-naranja: #A64F1F;
+  --color-lines: #B7A48D;
+  --color-disabled: #E6E6E6;
+  
+  --font-fraunces: "Fraunces", serif;
+  --font-matter: "Matter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-space-mono: "Space Mono", monospace;
+  
+  --transition-default: 0.4s ease;
+  
+  --container-padding-desktop: 110px;
+  --container-padding-tablet: 60px;
+  --container-padding-mobile: 24px;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+.font-heading-display {
+  font-family: var(--font-fraunces);
+  font-size: 8rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  text-transform: uppercase;
+}
+
+.font-heading-1 {
+  font-family: var(--font-fraunces);
+  font-size: 5.25rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 6rem;
+  text-transform: uppercase;
+}
+
+.font-heading-2 {
+  font-family: var(--font-fraunces);
+  font-size: 5.25rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 5.25rem;
+}
+
+.font-heading-3 {
+  font-family: var(--font-fraunces);
+  font-size: 4rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 5.25rem;
+}
+
+.font-heading-2-light {
+  font-family: var(--font-fraunces);
+  font-size: 5.25rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 5.25rem;
+  text-transform: uppercase;
+}
+
+.font-heading-4 {
+  font-family: var(--font-fraunces);
+  font-size: 2.25rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 3.75rem;
+}
+
+.font-heading-5 {
+  font-family: var(--font-fraunces);
+  font-size: 2rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 2.8125rem;
+}
+
+.font-medium-light {
+  font-family: var(--font-fraunces);
+  font-size: 4.5rem;
+  line-height: 4.5rem;
+  font-weight: 300;
+  text-transform: uppercase;
+  margin:0;
+
+}
+  
+
+.font-body-medium-light {
+  font-family: var(--font-matter);
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+}
+
+.font-body-small {
+  font-family: var(--font-matter);
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5rem;
+}
+
+.font-caption-small {
+  font-family: var(--font-space-mono);
+  font-size: 1rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5625rem;
+}
+
+.font-overline {
+  font-family: var(--font-space-mono);
+  font-size: 1.5rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0.15rem;
+  text-transform: uppercase;
+}
+
+.font-button {
+  font-family: var(--font-space-mono);
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.75rem;
+}
+
+/* ========================================
+   COLORS
+   ======================================== */
+
+.text-cafe { color: var(--color-cafe); }
+.text-white { color: var(--color-white); }
+.text-blanco-hueso { color: var(--color-blanco-hueso); }
+.text-beige { color: var(--color-beige); }
+.text-naranja { color: var(--color-naranja); }
+
+.bg-cafe { background-color: var(--color-cafe); }
+.bg-white { background-color: var(--color-white); }
+.bg-blanco-hueso { background-color: var(--color-blanco-hueso); }
+.bg-beige { background-color: var(--color-beige); }
+.bg-naranja { background-color: var(--color-naranja); }
+
+.border-cafe { border-color: var(--color-cafe); }
+.border-white { border-color: var(--color-white); }
+.border-blanco-hueso { border-color: var(--color-blanco-hueso); }
+.border-beige { border-color: var(--color-beige); }
+.border-naranja { border-color: var(--color-naranja); }
+
+/* ========================================
+   CONTAINER
+   ======================================== */
+
+.container-nalakalu {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding-desktop);
+  padding-right: var(--container-padding-desktop);
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.62rem 1.25rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  font-family: var(--font-space-mono);
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.75rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-default);
+  white-space: nowrap;
+}
+
+.btn-cafe {
+  background-color: var(--color-cafe);
+  border-color: var(--color-cafe);
+  color: var(--color-white);
+}
+
+.btn-cafe:hover {
+  background-color: var(--color-beige);
+  border-color: var(--color-beige);
+  color: var(--color-cafe);
+}
+
+.btn-cafe:active {
+  background-color: var(--color-lines);
+  border-color: var(--color-lines);
+}
+
+.btn-cafe:disabled,
+.btn-cafe.disabled {
+  background-color: var(--color-disabled);
+  border-color: var(--color-disabled);
+  color: #999;
+  cursor: not-allowed;
+}
+
+.btn-blanco {
+  background-color: var(--color-white);
+  border-color: var(--color-white);
+  color: var(--color-cafe);
+}
+
+.btn-blanco:hover {
+  background-color: var(--color-beige);
+  border-color: var(--color-beige);
+}
+
+.btn-blanco:active {
+  background-color: var(--color-lines);
+  border-color: var(--color-lines);
+}
+
+.btn-blanco:disabled,
+.btn-blanco.disabled {
+  background-color: var(--color-disabled);
+  border-color: var(--color-disabled);
+  color: #999;
+  cursor: not-allowed;
+}
+
+.btn-outline-blanco {
+  background-color: transparent;
+  border-color: var(--color-white);
+  color: var(--color-white);
+}
+
+.btn-outline-blanco:hover {
+  background-color: var(--color-beige);
+  border-color: var(--color-beige);
+  color: var(--color-cafe);
+}
+
+.btn-outline-blanco:active {
+  background-color: var(--color-lines);
+  border-color: var(--color-lines);
+  color: var(--color-cafe);
+}
+
+.btn-outline-blanco:disabled,
+.btn-outline-blanco.disabled {
+  background-color: var(--color-disabled);
+  border-color: var(--color-disabled);
+  color: #999;
+  cursor: not-allowed;
+}
+
+.btn-outline-cafe {
+  background-color: transparent;
+  border-color: var(--color-cafe);
+  color: var(--color-cafe);
+}
+
+.btn-outline-cafe:hover {
+  background-color: var(--color-beige);
+  border-color: var(--color-beige);
+  color: var(--color-cafe);
+}
+
+.btn-outline-cafe:active {
+  background-color: var(--color-lines);
+  border-color: var(--color-lines);
+  color: var(--color-cafe);
+}
+
+.btn-outline-cafe:disabled,
+.btn-outline-cafe.disabled {
+  background-color: var(--color-disabled);
+  border-color: var(--color-disabled);
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   RESPONSIVE TYPOGRAPHY
+   ======================================== */
+
+@media (max-width: 768px) {
+  .font-heading-display {
+    font-size: 5.5rem;
+  }
+  
+  .font-heading-3 {
+  font-family: var(--font-fraunces);
+  font-size: 3rem;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 5.25rem;
+}
+
+.font-body-smal{
+  font-size:18px;
+}
+  
+  .font-caption-small {
+  font-family: var(--font-space-mono);
+  font-size: 1.5rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5625rem;
+}
+  
+  .font-heading-1 {
+    font-size: 3.75rem;
+    line-height: 4.5rem;
+  }
+  
+  .font-medium-light {
+  font-size: 3rem;
+  line-height: 4rem;
+  font-weight: 300;
+}
+  
+  
+  .font-heading-2 {
+    font-size: 3rem;
+    line-height: 4rem;
+  }
+    .font-heading-2-light {
+    font-size: 3rem;
+    line-height: 4rem;
+  }
+  
+  .font-heading-4 {
+    font-size: 2rem;
+    line-height: 3rem;
+  }
+  
+  .font-heading-5 {
+    font-size: 2rem;
+    line-height: 2.5rem;
+  }
+  
+  .font-overline {
+    font-size: 1.25rem;
+    letter-spacing: 0.1rem;
+  }
+  
+  .container-nalakalu {
+    padding-left: var(--container-padding-tablet);
+    padding-right: var(--container-padding-tablet);
+  }
+}
+
+@media (max-width: 390px) {
+  .font-heading-display {
+    font-size: 4rem;
+  }
+  
+  .font-heading-1 {
+    font-size: 2.75rem;
+    line-height: 3.5rem;
+  }
+  
+  .font-heading-2 {
+    font-size: 3rem;
+    line-height: 3rem;
+  }
+  
+   .font-heading-2-light {
+    font-size: 3rem;
+    line-height: 4rem;
+  }
+  
+  .font-heading-4 {
+    font-size: 1.75rem;
+    line-height: 2.5rem;
+  }
+  
+  .font-heading-5 {
+    font-size: 2rem;
+    line-height: 2.25rem;
+  }
+  
+  .font-body-medium-light {
+    font-size: 18px;
+  }
+  
+  .font-overline {
+    font-size: 1rem;
+    letter-spacing: 0.08rem;
+  }
+  
+  .font-button {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+  
+  .btn {
+    padding: 1rem 1.125rem;
+  }
+  
+  .container-nalakalu {
+    padding-left: var(--container-padding-mobile);
+    padding-right: var(--container-padding-mobile);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.transition-default {
+  transition: all var(--transition-default);
+}
+
+.no-scroll {
+  overflow: hidden;
+}

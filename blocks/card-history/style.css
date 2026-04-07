@@ -1,0 +1,262 @@
+/* =========================
+   CARD HISTORY - STACKED STICKY REAL (como showroom)
+   ========================= */
+
+.card-history{
+  /* ajustables */
+  --ch-block-gap: 3rem;
+  --ch-side-pad: 8rem;
+
+  /* altura card */
+  --ch-card-h: 72vh;
+
+  /* ✅ TOP real: header + aire (evita que quede pegada arriba) */
+  --ch-header-h: 88px;                 /* si tu header mide distinto, tocá esto */
+  --ch-top-gap: 24px;
+  --ch-top: calc(var(--ch-header-h) + var(--ch-top-gap));
+
+  /* ✅ distancia de “paso” para que cada card llegue al mismo top */
+  --ch-step: calc(100vh - var(--ch-top));
+  --ch-gap-between: calc(var(--ch-step) - var(--ch-card-h));
+
+  /* cuánto “aguanta” la última antes de terminar el bloque */
+  --ch-last-hold: 12vh;
+
+  background: white;
+  position: relative;
+  min-height: 100vh;
+  padding-top: var(--ch-block-gap);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* Blindaje sticky */
+.card-history,
+.card-history .wp-block-group,
+.card-history .wp-block,
+.card-history .alignfull,
+.card-history .alignwide{
+  overflow: visible !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
+.card-history .background-wrapper{
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+/* Fondo sticky atrás */
+.card-history .background-section{
+  position: sticky;
+  top: 0;
+
+  /* cubre el padding-top del bloque (sin banda blanca) */
+  margin-top: calc(-1 * var(--ch-block-gap));
+  height: calc(100vh + var(--ch-block-gap));
+
+  background: var(--ch-bg) center/cover no-repeat;
+  z-index: 0;
+  pointer-events: none;
+
+  margin-bottom: calc(-100vh - var(--ch-block-gap));
+}
+
+.card-history .ch-stack{
+  padding-top:6rem !important;
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  padding: 0 var(--ch-side-pad);
+  padding-bottom: calc(var(--ch-last-hold) + 2rem);
+}
+
+.ch-content-2{
+      display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.card-history .ch-card{
+  position: sticky;
+  top: var(--ch-top);
+  height: var(--ch-card-h);
+
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 48px;
+  padding: 36px;
+  background: #F9F5F2;
+  border: 1px solid rgba(255,255,255,0.65);
+  z-index: calc(100 + var(--ch-z, 1));
+}
+
+/* Espaciado entre cards = paso - alto card (así llegan al mismo top) */
+.card-history .ch-card + .ch-card{
+  margin-top: max(2rem, var(--ch-gap-between));
+}
+
+/* alternancia */
+.card-history .ch-card.is-reverse{
+  flex-direction: row-reverse;
+}
+
+/* contenido */
+.card-history .content{
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-history .header-history{
+  display: flex;
+  width:100%;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+/* imagen + esquinas */
+.card-history .image-wrapper{
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  padding: 18px;
+  display: flex;
+}
+
+.card-history .image-wrapper::before{
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    /* arriba izquierda */
+    linear-gradient(#B7A48D, #B7A48D) top left / 40px 2px no-repeat,
+    linear-gradient(#B7A48D, #B7A48D) top left / 2px 40px no-repeat,
+
+    /* arriba derecha */
+    linear-gradient(#B7A48D, #B7A48D) top right / 40px 2px no-repeat,
+    linear-gradient(#B7A48D, #B7A48D) top right / 2px 40px no-repeat,
+
+    /* abajo izquierda */
+    linear-gradient(#B7A48D, #B7A48D) bottom left / 40px 2px no-repeat,
+    linear-gradient(#B7A48D, #B7A48D) bottom left / 2px 40px no-repeat,
+
+    /* abajo derecha */
+    linear-gradient(#B7A48D, #B7A48D) bottom right / 40px 2px no-repeat,
+    linear-gradient(#B7A48D, #B7A48D) bottom right / 2px 40px no-repeat;
+}
+
+.card-history .image-container{
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.card-history .image-container img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card-history{
+  --ch-top-gap: 4rem;  
+}
+
+.only-mobile{
+    display:none;
+  }
+
+.only-desktop{
+  display:flex;
+}
+
+
+
+@media (max-width: 1024px){
+  .card-history{
+    --ch-side-pad: 2.5rem;
+    --ch-card-h: 74vh;
+    --ch-header-h: 84px;
+  }
+  .card-history .ch-card{
+    padding: 32px;
+    gap: 28px;
+  }
+}
+
+@media (max-width: 768px){
+  .card-history .background-wrapper{
+    position: relative;
+  }
+  .card-history .ch-card.is-reverse {
+    flex-direction: column-reverse;
+}
+  
+  .only-mobile{
+    display:flex;
+  }
+  .only-desktop{
+  display:none;
+}
+
+  .card-history .background-section{
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    margin: 0 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    background: var(--ch-bg) center/cover no-repeat !important;
+  }
+
+  /* El contenido arriba del fondo */
+  .card-history .ch-stack{
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  .card-history .ch-card{
+     flex-direction: column;
+    height: 100%;
+  }
+  
+  .ch-content-1{
+    width:100%;
+  }
+ 
+ .card-history .header-history {
+    justify-content: space-between;
+    margin-bottom: 0;
+    width: 100%;
+}
+
+.card-history .ch-card.is-reverse .ch-content-1{
+  order:1;
+}
+
+.card-history .ch-stack > .ch-card:last-child{
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  
+  .ch-stack > .ch-card:last-child .ch-content-1.only-mobile {
+order:1}
+
+.card-history .image-wrapper{
+  padding:10px;
+}
+
+.card-history .ch-stack {
+padding-bottom:4rem;
+}
+
+}

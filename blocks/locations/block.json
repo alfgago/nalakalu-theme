@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/locations",
+  "title": "Locations",
+  "category": "design",
+  "icon": "location",
+  "description": "Grid de ubicaciones con imagen, tag y descripción al hover.",
+  "style": "file:./style.css",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "html": false
+  },
+  "keywords": ["locations", "stores", "ubications", "showrooms"]
+}

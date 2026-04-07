@@ -1,0 +1,17 @@
+{
+  "name": "acf/text-video",
+  "title": "Text + Video (Hero)",
+  "description": "Hero con título y descripción sobre un video, más un mini-video de fondo en el panel derecho.",
+  "category": "layout",
+  "icon": "format-video",
+  "keywords": ["video", "hero", "overlay", "texto"],
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "supports": {
+    "align": ["wide", "full"],
+    "jsx": false
+  },
+  "style": [ "file:./style.css" ]
+}

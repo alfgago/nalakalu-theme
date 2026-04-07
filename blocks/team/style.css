@@ -1,0 +1,342 @@
+/* ===== Team (scoped) ===== */
+.nl-team {
+  position: relative !important;
+  z-index:9 !important;
+}
+
+.nl-team .nl-team-inner {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.nl-team .nl-team-section {
+  padding: 5rem 8rem;
+}
+
+.nl-team .nl-team-section--bg {
+  background: #F9F5F2;
+  border-radius: 2px;
+  padding: 5rem 8rem;
+}
+
+.nl-team .profile-section {
+  margin-top: 3.75rem;
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 100px;
+  align-items: start;
+}
+
+.nl-team .left-column {
+  position: relative;
+}
+
+.nl-team .main-image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/5;
+  overflow: hidden;
+  border-radius: 6px;
+  margin-bottom: 0;
+  height: 473px;
+}
+
+.nl-team .main-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity .6s cubic-bezier(.4,0,.2,1);
+}
+
+.nl-team .main-image.active {
+  opacity: 1;
+}
+
+.nl-team .arrow-button {
+  position: absolute;
+  right: -2rem;
+  bottom: 50%;
+  width: 56px;
+  height: 56px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .3s ease, box-shadow .3s ease;
+  z-index: 10;
+  border-radius: 100px;
+  border: 1px solid var(--Blanco, #FFF);
+  background: rgba(255, 255, 255, 0.80);
+}
+
+.nl-team .arrow-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+}
+
+.nl-team .right-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.nl-team .member-descriptions {
+}
+
+.nl-team .member-desc {
+  display: none;
+}
+
+.nl-team .member-desc.active {
+  display: block;
+}
+
+.nl-team .gallery-button-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+  margin-bottom: 60px;
+  margin-top: 3rem;
+}
+
+/* Thumbnails (cada miembro) */
+.thumbnail-gallery {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+}
+
+.nl-team .thumbnail {
+  width: 7.4rem;
+  height: 7rem;
+  object-fit: cover;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .3s ease;
+  flex-shrink: 0;
+}
+
+.nl-team .thumbnail:hover {
+  transform: translateY(-2px);
+}
+
+.nl-team .thumbnail.active {
+  border-color: white;
+  border-radius: 8px;
+}
+
+.nl-team .thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nl-team .contact-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nl-team .contact-button {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 0.4rem 0.8rem 0.4rem 0.4rem;
+  background: #fff;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #2c2c2c;
+  text-decoration: none;
+  transition: all .3s ease;
+  font-family: var(--font-space-mono);
+  white-space: nowrap;
+}
+
+.nl-team .contact-button.active {
+  display: inline-flex;
+}
+
+.nl-team .contact-button:hover {
+  background: #E3D1BA;
+  color: black;
+  transform: translateX(2px);
+  border: 1px solid #E3D1BA;
+}
+
+.nl-team .contact-button img {
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.nl-team .profile-info-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 4rem;
+  margin-top: auto;
+}
+
+.profile-info {
+  width: 50%;
+}
+
+
+.profile-info-item .font-button{
+  margin:0;
+}
+
+.nl-team .profile-info-item {
+  display: none;
+}
+
+.nl-team .profile-info-item.active {
+  display:flex;
+  flex-direction:column;
+  gap:1.2rem;
+}
+
+
+.profile-info-section .font-body-medium-light {
+  width: 50%;
+}
+
+.profile-info-section .font-body-medium-light {
+  max-width: 40rem;
+  text-align: right;
+  margin:0;
+}
+
+.nl-team .profile-secondary {
+  display: none;
+}
+
+.nl-team .profile-secondary.active {
+  display: block;
+}
+
+.right-column .font-body-medium-light {
+  max-width: 40rem;
+}
+
+.nl-team .nl-team-placeholder {
+  padding: 60px 0;
+  text-align: center;
+}
+
+.profile-info .font-heading-4 {
+  line-height: 2.5rem;
+}
+
+.role {
+  width: 100%;
+  margin-top: 1rem;
+}
+.nl-team .nl-team-carousel{ display:none; }
+
+@media (max-width: 768px){
+  .nl-team .nl-team-section,
+  .nl-team .nl-team-section--bg{
+    padding: 3rem 2rem;
+  }
+  
+  .nl-team .profile-section{
+    display: none;
+  }
+
+  .nl-team .nl-team-carousel{
+    display: block;
+    margin-top: 2rem;
+  }
+
+  .nl-team .nl-team-carousel-stage{
+    position: relative;
+    padding:0rem 2rem;
+  }
+
+  .nl-team .nl-team-carousel-image-wrap{
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+
+  .nl-team .nl-team-carousel-image{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .6s cubic-bezier(.4,0,.2,1);
+  }
+
+  .nl-team .nl-team-carousel-image.active{
+    opacity: 1;
+  }
+
+  .nl-team .nl-team-carousel .arrow-button{
+    position: absolute;
+    top: 50%;
+    bottom: auto;
+    right: auto;
+    transform: translateY(-50%);
+    width: 52px;
+    height: 52px;
+    z-index: 5;
+  }
+
+  .nl-team .nl-team-carousel .arrow-button--prev{ left: 0px; }
+  .nl-team .nl-team-carousel .arrow-button--next{ right: 0px; }
+
+  .nl-team .nl-team-carousel .arrow-button--prev svg{
+    transform: rotate(180deg);
+  }
+
+  .nl-team .nl-team-carousel-content{
+    margin-top: 1.5rem;
+    padding:0rem 2rem;
+  }
+
+  .nl-team .nl-team-slide{
+    display: none;
+  }
+
+  .nl-team .nl-team-slide.active{
+    display: block;
+  }
+
+  .nl-team .nl-team-slide .role{
+    margin-top: .6rem;
+    margin-bottom: 0;
+  }
+
+  .nl-team .nl-team-slide-text{
+    margin-top: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .nl-team .nl-team-contact-mobile{
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+    margin-top: 1.6rem;
+    border:0;
+    gap:2rem;
+    padding:.8rem;
+    border:1px solid;
+  }
+  .nl-team .contact-button img{
+    display:none;
+  }
+}

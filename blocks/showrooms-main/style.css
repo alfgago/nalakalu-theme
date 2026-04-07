@@ -1,0 +1,195 @@
+/* =========================
+   Desktop / default (igual)
+   ========================= */
+.nl-showrooms-main {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.nl-showrooms-main__card {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: flex 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.nl-showrooms-main:hover .nl-showrooms-main__card {
+  flex: 0.8;
+}
+
+.nl-showrooms-main .nl-showrooms-main__card:hover {
+  flex: 1.6;
+}
+
+.nl-showrooms-main__card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  z-index: 1;
+  transition: opacity 0.4s ease;
+}
+
+.nl-showrooms-main__card:hover::before {
+  opacity: 0.8;
+}
+
+/* Imagen de fondo */
+.nl-showrooms-main__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    transform 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.6s ease;
+  filter: brightness(0.9);
+}
+
+.nl-showrooms-main__card:hover .nl-showrooms-main__img {
+  transform: scale(1.08);
+  filter: brightness(1);
+}
+
+/* Contenido de texto */
+.nl-showrooms-main__content {
+  position: absolute;
+  bottom: 60px;
+  left: 40px;
+  z-index: 2;
+  color: #ffffff;
+  transform: translateY(20px);
+  opacity: 0.9;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nl-showrooms-main__card:hover .nl-showrooms-main__content {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Título (nombre del showroom) */
+.nl-showrooms-main__title-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nl-showrooms-main__title {
+  margin-top: 1rem;
+  max-width: 27rem;
+}
+
+.nl-showrooms-main .font-heading-2 {
+  transition: .3s all;
+}
+
+.nl-showrooms-main__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 65px;
+  height: 65px;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+  margin-top: 1.5rem;
+  margin-left: 2.2rem;
+}
+
+.nl-showrooms-main__card:hover .nl-showrooms-main__arrow {
+  opacity: 1;
+  transform: translateY(0);
+  margin-top: 1.5rem;
+  margin-left: 2.2rem;
+}
+
+.nl-showrooms-main__card:hover .font-heading-2 {
+  font-size: 6rem;
+}
+
+.nl-showrooms-main__arrow svg {
+  transition: transform 0.3s ease;
+}
+
+.nl-showrooms-main__arrow:hover svg {
+  transform: translate(2px, -2px);
+}
+
+
+@media (max-width: 768px) {
+  .nl-showrooms-main {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .nl-showrooms-main__card {
+    flex: 0 0 auto;
+    height: 280px;
+    max-height: 280px;
+    min-height: 0;
+    cursor: default;
+    transition: none;
+  }
+
+  .nl-showrooms-main__img {
+    transition: none;
+    transform: none;
+    filter: brightness(0.9);
+  }
+
+  .nl-showrooms-main__card::before {
+    transition: none;
+    opacity: 1; 
+  }
+
+  .nl-showrooms-main:hover .nl-showrooms-main__card { flex: 0 0 auto; }
+  .nl-showrooms-main .nl-showrooms-main__card:hover { flex: 0 0 auto; }
+
+  .nl-showrooms-main__card:hover::before { opacity: 1; }
+
+  .nl-showrooms-main__card:hover .nl-showrooms-main__img {
+    transform: none;
+    filter: brightness(0.9);
+  }
+
+  .nl-showrooms-main__content {
+    left: 24px;
+    bottom: 32px;
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+
+  .nl-showrooms-main__card:hover .nl-showrooms-main__content {
+    transform: none;
+    opacity: 1;
+  }
+
+  .nl-showrooms-main .font-heading-2,
+  .nl-showrooms-main__card:hover .font-heading-2 {
+    font-size: 36px !important;
+    transition: none;
+  }
+
+  .nl-showrooms-main__arrow {
+display:none;}
+
+  .nl-showrooms-main__divider {
+    height: 1px;
+    width: 100%;
+  }
+}

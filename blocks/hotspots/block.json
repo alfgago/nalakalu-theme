@@ -1,0 +1,18 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/hotspots",
+  "title": "Hotspots (LookBook)",
+  "category": "design",
+  "icon": "tag",
+  "description": "Muestra un LookBook (hotspots) tal cual el plugin, vía shortcode.",
+  "keywords": ["hotspots", "lookbook", "woocommerce"],
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true
+  },
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "style": "file:./style.css"
+}

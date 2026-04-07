@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/pillars",
+  "title": "Pillars",
+  "description": "Sección de pilares con 3 tarjetas e intro con CTA.",
+  "category": "layout",
+  "icon": "columns",
+  "keywords": ["pillars", "tarjetas", "valores"],
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "spacing": { "margin": true, "padding": true }
+  },
+  "style": "file:./style.css",
+  "render": "file:./index.php"
+}

@@ -20,7 +20,12 @@
     "@wordpress/scripts": "^19.2.2",
     "dir-archiver": "^1.1.1",
     "node-sass": "^7.0.1",
-    "rtlcss": "^3.5.0"
+    "rtlcss": "^3.5.0",
+    "autoprefixer": "^10.4.16",
+    "browser-sync": "^2.29.3",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0"
   },
   "rtlcssConfig": {
     "options": {
@@ -36,6 +41,10 @@
     "map": false
   },
   "scripts": {
+    "dev": "npx tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/tailwind-compiled.css --watch --poll",
+    "build": "npx tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/tailwind-compiled.css --minify",
+    "live": "browser-sync start --config bs-config.js",
+    "dev:full": "concurrently \"npm run dev\" \"npm run live\"",
     "watch": "node-sass sass/ -o ./ --source-map true --output-style expanded --indent-type tab --indent-width 1 -w",
     "compile:css": "node-sass sass/ -o ./ && stylelint '*.css' --fix || true && stylelint '*.css' --fix",
     "compile:rtl": "rtlcss style.css style-rtl.css",

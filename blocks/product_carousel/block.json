@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/product-carousel",
+  "title": "Product Carousel (Tabs)",
+  "category": "widgets",
+  "icon": "cart",
+  "description": "Carrusel de productos por 3 categorías (tabs).",
+  "style": "file:./style.css",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "html": false
+  },
+  "keywords": ["products", "carousel", "tabs", "woocommerce"]
+}

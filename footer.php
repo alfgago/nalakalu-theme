@@ -1,136 +1,108 @@
 <?php
-
 /**
- * The template for displaying the footer
- *
- * @package nalakalu-2025
+ * Footer Na Lakalú
+ * Incluir con get_footer()
  */
-
-$novedades = get_field('novedades', 'option');
-$social_links = get_field('social_links', 'option');
-$subscribe = get_field('subscribe', 'option');
 ?>
 
-<footer id="colophon" class="site-footer bg-cafe text-white py-12 md:py-16">
-	<div class="container-nalakalu">
+<footer>
+  <div class="footer-main">
+    <div class="footer-column">
+      <h3 class="font-body-small">Na lakalú</h3>
+      <?php
+      wp_nav_menu([
+        'theme_location' => 'footer_nalakalu',
+        'container'      => false,
+        'menu_class'     => '',
+        'fallback_cb'    => function () {
+          echo '<ul><li><a href="' . esc_url(admin_url('nav-menus.php')) . '">Configurar menú "Footer: Na lakalú"</a></li></ul>';
+        },
+      ]);
+      ?>
+    </div>
 
-		<div class="footer-top border-b border-beige pb-12 mb-12">
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12">
+    <div class="footer-column">
+      <h3 class="font-body-small">Showrooms</h3>
+      <?php
+      wp_nav_menu([
+        'theme_location' => 'footer_showrooms',
+        'container'      => false,
+        'menu_class'     => '',
+        'fallback_cb'    => function () {
+          echo '<ul><li><a href="' . esc_url(admin_url('nav-menus.php')) . '">Configurar menú "Footer: Showrooms"</a></li></ul>';
+        },
+      ]);
+      ?>
+    </div>
 
-				<div class="lg:col-span-3">
-					<?php if ($novedades): ?>
-						<p class="font-body-small text-white mb-6">
-							<?php echo esc_html($novedades); ?>
-						</p>
-					<?php endif; ?>
+    <div class="footer-column">
+      <h3 class="font-body-small">Productos</h3>
+      <?php
+      wp_nav_menu([
+        'theme_location' => 'footer_productos',
+        'container'      => false,
+        'menu_class'     => '',
+        'fallback_cb'    => function () {
+          echo '<ul><li><a href="' . esc_url(admin_url('nav-menus.php')) . '">Configurar menú "Footer: Productos"</a></li></ul>';
+        },
+      ]);
+      ?>
+    </div>
 
-					<?php if ($social_links && is_array($social_links)): ?>
-						<div class="flex gap-4">
-							<?php foreach ($social_links as $social):
-								$icon = isset($social['icon']) ? $social['icon'] : '';
-								$url = isset($social['url']) ? $social['url'] : '#';
-							?>
-								<a
-									href="<?php echo esc_url($url); ?>"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="text-white hover:text-beige transition-default"
-									aria-label="<?php echo esc_attr($icon); ?>">
-									<?php if ($icon): ?>
-										<span class="font-body-small"><?php echo esc_html($icon); ?></span>
-									<?php endif; ?>
-								</a>
-							<?php endforeach; ?>
-						</div>
-					<?php endif; ?>
-				</div>
+    <div class="font-body-small footer-column">
+      <h3 class="font-body-small">Más</h3>
+      <?php
+      wp_nav_menu([
+        'theme_location' => 'footer_mas',
+        'container'      => false,
+        'menu_class'     => '',
+        'fallback_cb'    => function () {
+          echo '<ul><li><a href="' . esc_url(admin_url('nav-menus.php')) . '">Configurar menú "Footer: Más"</a></li></ul>';
+        },
+      ]);
+      ?>
+    </div>
+  </div>
 
-				<div class="lg:col-span-6">
-					<?php
-					if (has_nav_menu('menu-1')) {
-						$menu_items = wp_get_nav_menu_items(get_nav_menu_locations()['menu-1']);
+  <div class="footer-newsletter">
+    <div class="newsletter-text desktop-only"><h3 class="font-heading-4"><?php echo esc_html( get_theme_mod('nlk_news_title', 'Recibí inspiración y novedades directamente en tu correo.') ); ?></h3>
+      <div class="social-icons desktop-only">
+  <?php if (function_exists('nlk_render_social_icons')) nlk_render_social_icons(); ?>
+</div>
 
-						if ($menu_items) {
-							$menu_columns = array_chunk($menu_items, ceil(count($menu_items) / 3));
-					?>
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-								<?php foreach ($menu_columns as $column): ?>
-									<div class="footer-menu-column">
-										<nav>
-											<ul class="space-y-3">
-												<?php foreach ($column as $item): ?>
-													<li>
-														<a
-															href="<?php echo esc_url($item->url); ?>"
-															class="font-body-small text-white hover:text-beige transition-default">
-															<?php echo esc_html($item->title); ?>
-														</a>
-													</li>
-												<?php endforeach; ?>
-											</ul>
-										</nav>
-									</div>
-								<?php endforeach; ?>
-							</div>
-					<?php
-						}
-					}
-					?>
-				</div>
+    </div>
 
-				<div class="lg:col-span-3">
-					<?php if ($subscribe): ?>
-						<h3 class="font-heading-5 text-white mb-6">
-							<?php echo esc_html($subscribe); ?>
-						</h3>
-					<?php endif; ?>
+    <div class="newsletter-form">
+        
+      <h3 class="font-heading-4"><?php echo esc_html( get_theme_mod('nlk_news_form_title', 'Suscríbete') ); ?></h3>
+      <form class="form-group" action="#" method="post">
+        <input type="email" name="email"
+  placeholder="<?php echo esc_attr( get_theme_mod('nlk_news_placeholder', 'Correo Electrónico') ); ?>" required>
 
-					<form class="footer-newsletter-form" action="#" method="post">
-						<div class="flex flex-col sm:flex-row gap-3">
-							<input
-								type="email"
-								name="email"
-								placeholder="Correo Electrónico"
-								required
-								class="flex-1 px-4 py-3 bg-transparent border border-white rounded font-body-small text-white placeholder:text-white placeholder:opacity-60 focus:outline-none focus:border-beige transition-default">
-							<button
-								type="submit"
-								class="btn btn-blanco whitespace-nowrap">
-								Enviar
-							</button>
-						</div>
-					</form>
-				</div>
+        <button type="submit">Enviar</button>
+      </form>
+    </div>
+  </div>
+<div class="footer-social footer-newsletter">
+    <div class="newsletter-text"><h3 class="font-heading-4"><?php echo esc_html( get_theme_mod('nlk_news_title', 'Recibí inspiración y novedades directamente en tu correo.') ); ?></h3></div>
+      <div class="social-icons">
+  <?php if (function_exists('nlk_render_social_icons')) nlk_render_social_icons(); ?>
+</div>
+</div>
+  <div class="footer-logo">
+   <div class="site-branding logo-footer">
+            <?php if (has_custom_logo()) { the_custom_logo(); } ?>
+          </div>
+  </div>
 
-			</div>
-		</div>
-
-		<div class="footer-logo flex justify-center items-center py-12 border-b border-beige">
-			<div class="footer-logo-wrapper max-w-4xl w-full">
-				<?php
-				$footer_logo = get_field('footer_logo', 'option');
-				if ($footer_logo): ?>
-					<img
-						src="<?php echo esc_url($footer_logo['url']); ?>"
-						alt="<?php echo esc_attr($footer_logo['alt'] ?: 'Nalakalu'); ?>"
-						class="w-full h-auto">
-				<?php endif; ?>
-			</div>
-		</div>
-
-		<div class="footer-bottom pt-8">
-			<p class="font-caption-small text-white text-center opacity-60">
-				© <?php echo date('Y'); ?> Todos los derechos reservados
-			</p>
-		</div>
-
-	</div>
+  <div class="footer-bottom">
+<?php
+    $legal = get_theme_mod('nlk_footer_legal');
+    echo $legal ? wp_kses_post($legal) : '© ' . esc_html( date_i18n('Y') ) . ' ' . esc_html__('Todos los derechos reservados','nalakalu');
+  ?>
+  </div>
 </footer>
 
-</div><!-- #page -->
-
 <?php wp_footer(); ?>
-
 </body>
-
 </html>

@@ -1,0 +1,811 @@
+# Nalakalu Theme - Cursor Rules
+
+## Descripción del Proyecto
+
+Este es un tema de WordPress personalizado para una tienda online con WooCommerce. La arquitectura se basa en **componentes reutilizables** implementados como **Custom Blocks de WordPress** con **Advanced Custom Fields (ACF)** para gestionar el contenido de forma flexible. Las animaciones se realizan con **GSAP** y el diseño sigue el sistema documentado en `DESIGN_SYSTEM.md`.
+
+## Stack Tecnológico
+
+- **WordPress**: CMS base
+- **WooCommerce**: E-commerce
+- **ACF Pro**: Custom fields para bloques
+- **Tailwind CSS**: Framework CSS con configuración personalizada
+- **GSAP**: Librería de animaciones (ScrollTrigger, Timeline, etc.)
+- **PHP 7.4+**: Lenguaje backend
+- **JavaScript ES6+**: Lenguaje frontend
+
+## Filosofía de Desarrollo
+
+1. **Componentización**: Cada sección reutilizable es un bloque independiente
+2. **Separación de concerns**: Estructura, estilo y comportamiento claramente separados
+3. **Design System First**: Siempre usar las utilities del design system antes de crear estilos custom
+4. **Performance**: Código optimizado, lazy loading, animaciones eficientes
+5. **Accesibilidad**: Respetar `prefers-reduced-motion`, usar ARIA labels, semántica HTML correcta
+6. **Mobile First**: Diseño responsivo con breakpoints definidos
+7. **Código Limpio**: **NUNCA agregar comentarios al código sin consultar previamente**. Mantener el código limpio y ordenado es prioritario
+
+---
+
+## Estructura de Archivos
+
+### Tema Base
+```
+nalakalu-theme/
+├── blocks/                    # Todos los custom blocks
+│   ├── hero/
+│   ├── animated-title/
+│   └── [nuevo-block]/
+├── assets/
+│   └── css/
+│       └── custom-utilities.css  # Utilities del Design System
+├── inc/                       # Funciones PHP auxiliares
+├── template-parts/            # Partes de templates reutilizables
+├── js/                        # Scripts globales
+├── functions.php              # Funciones principales del tema
+├── tailwind.config.js         # Configuración de Tailwind
+├── DESIGN_SYSTEM.md           # Documentación del sistema de diseño
+└── .cursorrules               # Este archivo
+```
+
+### Estructura de un Bloque
+```
+blocks/[nombre-del-bloque]/
+├── block.json         # Configuración del bloque (REQUERIDO)
+├── acf.php           # Definición de campos ACF (REQUERIDO)
+├── index.php         # Template de render (REQUERIDO)
+├── style.css         # Estilos del bloque (REQUERIDO)
+├── script.js         # JavaScript/GSAP (OPCIONAL)
+└── editor.css        # Estilos solo para el editor (OPCIONAL)
+```
+
+---
+
+## Convenciones de Nomenclatura
+
+### Bloques
+- **Nombre del bloque**: `nalakalu-[nombre-descriptivo]`
+  - Ejemplo: `nalakalu-hero`, `nalakalu-animated-title`, `nalakalu-product-grid`
+- **Carpeta**: Usar el mismo nombre sin el prefijo `nalakalu-`
+  - Ejemplo: `blocks/hero/`, `blocks/animated-title/`
+
+### ACF Fields
+- **Group key**: `group_[nombre_bloque_corto]`
+  - Ejemplo: `group_hero_block`, `group_animated_title_image`
+- **Field key**: `field_[abreviatura]_[nombre_campo]`
+  - Ejemplo: `field_hero_title`, `field_ati_desc`
+- **Field name**: Usar snake_case descriptivo
+  - Ejemplo: `background_image`, `top_heading`, `cta_text`
+
+### CSS
+- **Clases principales**: `.nombre-del-bloque`
+  - Ejemplo: `.hero-block`, `.animated-title`
+- **Elementos hijos**: `.nombre-del-bloque__elemento`
+  - Ejemplo: `.hero-block__title`, `.hero-block__overlay`
+- **Modificadores**: `.nombre-del-bloque--modificador`
+  - Ejemplo: `.hero-block--dark`, `.animated-title--centered`
+- **Clases de animación**: `.animated` para elementos que se animan
+- **Variables CSS**: `--nombre-variable` dentro del componente
+  - Ejemplo: `--dur-img: 900ms`, `--easing: cubic-bezier()`
+
+### PHP
+- **Funciones globales**: `nalakalu_[nombre_funcion]`
+  - Ejemplo: `nalakalu_setup()`, `nalakalu_scripts()`
+- **Variables**: snake_case descriptivo
+  - Ejemplo: `$background_image`, `$cta_url`, `$img_alt`
+
+---
+
+## Proceso para Crear un Nuevo Bloque
+
+### Paso 1: Crear la Estructura de Carpetas
+```bash
+mkdir blocks/[nombre-bloque]
+cd blocks/[nombre-bloque]
+touch block.json acf.php index.php style.css
+```
+
+### Paso 2: Configurar `block.json`
+
+```json
+{
+  "apiVersion": 2,
+  "name": "nalakalu-[nombre-bloque]",
+  "title": "[Título Descriptivo del Bloque]",
+  "category": "nalakalu",
+  "icon": "[nombre-icono-dashicon]",
+  "description": "[Descripción breve del propósito del bloque]",
+  "style": "file:./style.css",
+  "editorStyle": "file:./editor.css",
+  "viewScript": "file:./script.js",
+  "render": "file:./index.php",
+  "supports": {
+    "align": ["full", "wide"],
+    "anchor": true,
+    "html": false
+  }
+}
+```
+
+**Notas:**
+- `apiVersion: 2` siempre
+- `category: "nalakalu"` para agrupar todos los bloques custom
+- `editorStyle` y `viewScript` son opcionales
+- `supports.html: false` para prevenir edición de HTML raw
+- Iconos disponibles: https://developer.wordpress.org/resource/dashicons/
+
+### Paso 3: Definir Campos ACF en `acf.php`
+
+```php
+<?php
+
+if ( ! function_exists('acf_add_local_field_group') ) {
+    return;
+}
+
+add_action('acf/include_fields', function () {
+    if ( ! function_exists('acf_add_local_field_group') ) {
+        return;
+    }
+
+    acf_add_local_field_group( array(
+        'key' => 'group_[nombre_corto]',
+        'title' => '[Nombre del Bloque] Fields',
+        'fields' => array(
+            array(
+                'key' => 'field_[abrev]_[campo]',
+                'label' => '[Label del Campo]',
+                'name' => '[nombre_del_campo]',
+                'type' => '[text|textarea|image|wysiwyg|repeater|etc]',
+            ),
+        ),
+        'location' => array(
+            array(
+                array(
+                    'param'    => 'block',
+                    'operator' => '==',
+                    'value'    => 'nalakalu-[nombre-bloque]',
+                ),
+            ),
+        ),
+        'active' => true,
+        'show_in_rest' => 0,
+    ) );
+});
+```
+
+**Tipos de campos comunes:**
+- `text`: Texto simple
+- `textarea`: Texto largo
+- `wysiwyg`: Editor rich text
+- `image`: Sube imágenes (usar `return_format: 'array'`)
+- `url`: URLs
+- `number`: Números
+- `true_false`: Checkbox
+- `select`: Dropdown
+- `repeater`: Campos repetibles
+- `group`: Agrupar campos
+
+### Paso 4: Crear el Template en `index.php`
+
+```php
+<?php
+
+if ( ! function_exists('get_field') ) {
+    echo '<p><em>ACF plugin required.</em></p>';
+    return;
+}
+
+$campo_1 = get_field('nombre_campo_1');
+$campo_2 = get_field('nombre_campo_2');
+$imagen  = get_field('imagen');
+
+$img_url = isset($imagen['url']) ? esc_url($imagen['url']) : '';
+$img_alt = isset($imagen['alt']) ? esc_attr($imagen['alt']) : '';
+$img_w   = isset($imagen['width']) ? (int) $imagen['width'] : 0;
+$img_h   = isset($imagen['height']) ? (int) $imagen['height'] : 0;
+
+$block_id = 'block-' . ( isset($block['id']) ? $block['id'] : uniqid() );
+
+$class_name = 'nombre-del-bloque';
+if ( !empty($block['className']) ) {
+    $class_name .= ' ' . esc_attr($block['className']);
+}
+if ( !empty($block['align']) ) {
+    $class_name .= ' align' . esc_attr($block['align']);
+}
+?>
+
+<section id="<?php echo esc_attr($block_id); ?>" class="<?php echo $class_name; ?>">
+    
+    <?php if ($campo_1): ?>
+        <h2 class="nombre-del-bloque__title font-heading-2 text-brown">
+            <?php echo esc_html($campo_1); ?>
+        </h2>
+    <?php endif; ?>
+    
+    <?php if ($img_url): ?>
+        <img 
+            class="nombre-del-bloque__image"
+            src="<?php echo $img_url; ?>"
+            alt="<?php echo $img_alt; ?>"
+            <?php if ($img_w) echo 'width="' . $img_w . '"'; ?>
+            <?php if ($img_h) echo ' height="' . $img_h . '"'; ?>
+            loading="lazy"
+            decoding="async"
+        >
+    <?php endif; ?>
+    
+</section>
+```
+
+**Mejores prácticas para `index.php`:**
+- Siempre verificar que ACF está activo
+- Escapar outputs: `esc_html()`, `esc_url()`, `esc_attr()`
+- Usar condicionales para campos opcionales
+- Incluir ID único para poder targetear con GSAP
+- Usar clases del Design System cuando sea posible
+- Añadir `loading="lazy"` a imágenes
+- Incluir dimensiones de imagen para evitar layout shift
+
+### Paso 5: Estilos en `style.css`
+
+```css
+.nombre-del-bloque {
+    --spacing: 2rem;
+    --transition-duration: 0.3s;
+    --easing: cubic-bezier(0.22, 0.61, 0.36, 1);
+    
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+    padding: 4rem 2rem;
+}
+
+.nombre-del-bloque__title {
+    /* Usar clases del Design System cuando sea posible */
+    /* font-heading-1, font-heading-2, text-brown, etc. */
+}
+
+.nombre-del-bloque__image {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    .nombre-del-bloque {
+        --spacing: 1.5rem;
+        padding: 3rem 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .nombre-del-bloque {
+        --spacing: 1rem;
+        padding: 2rem 1rem;
+    }
+}
+
+.nombre-del-bloque .animated {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fade-in-up 0.6s var(--easing) forwards;
+}
+
+@keyframes fade-in-up {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nombre-del-bloque .animated,
+    .nombre-del-bloque * {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+}
+```
+
+**Guía de estilos:**
+- Usar variables CSS para valores que se repiten
+- Mobile-first: estilos base para móvil, media queries para desktop
+- BEM para nomenclatura de clases
+- Preferir Flexbox y Grid para layouts
+- Siempre incluir `@media (prefers-reduced-motion: reduce)`
+- Usar unidades relativas (rem, em, %) en lugar de px cuando sea posible
+- Mantener el código limpio sin comentarios innecesarios
+
+### Paso 6: JavaScript/GSAP en `script.js` (Opcional)
+
+```javascript
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
+
+document.addEventListener('DOMContentLoaded', () => {
+    
+    const blocks = document.querySelectorAll('.nombre-del-bloque');
+    
+    if (!blocks.length) return;
+    
+    blocks.forEach((block) => {
+        const title = block.querySelector('.nombre-del-bloque__title');
+        const image = block.querySelector('.nombre-del-bloque__image');
+        const items = block.querySelectorAll('.nombre-del-bloque__item');
+        
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: block,
+                start: 'top 80%',
+                end: 'bottom 20%',
+                toggleActions: 'play none none reverse',
+            }
+        });
+        
+        if (title) {
+            tl.from(title, {
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                ease: 'power3.out'
+            });
+        }
+        
+        if (image) {
+            tl.from(image, {
+                scale: 1.1,
+                opacity: 0,
+                duration: 1,
+                ease: 'power2.out'
+            }, '-=0.4');
+        }
+        
+        if (items.length) {
+            tl.from(items, {
+                y: 30,
+                opacity: 0,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: 'power2.out'
+            }, '-=0.6');
+        }
+    });
+    
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.globalTimeline.clear();
+        ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    }
+});
+```
+
+**Guías para GSAP:**
+- Siempre registrar plugins: `gsap.registerPlugin(ScrollTrigger)`
+- Usar timelines para secuenciar animaciones
+- ScrollTrigger para animaciones on scroll
+- Usar `'-=0.4'` para overlapping (iniciar antes de que termine la anterior)
+- Easings recomendados: `power2.out`, `power3.out`, `elastic.out`
+- Siempre respetar `prefers-reduced-motion`
+- Usar `toggleActions` para controlar el comportamiento en scroll
+- `markers: true` para debugging durante desarrollo (remover en producción)
+
+**Recursos GSAP:**
+- Docs: https://greensock.com/docs/
+- ScrollTrigger: https://greensock.com/docs/v3/Plugins/ScrollTrigger
+- Ease visualizer: https://greensock.com/ease-visualizer/
+
+---
+
+## Design System - Guía de Uso
+
+### Tipografía
+
+Siempre usar las clases predefinidas del design system ubicadas en `DESIGN_SYSTEM.md` y `assets/css/custom-utilities.css`:
+
+#### Display Heading
+```html
+<h1 class="font-heading-display text-brown">Título Display</h1>
+```
+- Tamaño: 128px (12.8rem)
+- Peso: 400
+- Uso: Títulos hero principales
+
+#### Heading 1
+```html
+<h1 class="font-heading-1 text-brown">Título H1</h1>
+```
+- Tamaño: 84px (8.4rem)
+- Peso: 300
+- Uso: Títulos de sección principales
+
+#### Heading 2
+```html
+<h2 class="font-heading-2 text-beige">Título H2</h2>
+```
+- Tamaño: 64px (6.4rem)
+- Peso: 300
+- Uso: Subtítulos de sección
+
+**Nota**: Estas clases son responsive automáticamente (definidas en media queries).
+
+### Colores
+
+#### Palette Principal
+- **Brown**: `#3D332B` - Color de texto por defecto
+- **Beige**: `#D7C5B4` - Color secundario
+- **Black**: `#000000` - Negro puro
+- **White**: `#FFFFFF` - Blanco puro
+
+#### Clases de Color
+```html
+<!-- Texto -->
+<p class="text-brown">Texto marrón</p>
+<p class="text-beige">Texto beige</p>
+<p class="text-black">Texto negro</p>
+<p class="text-white">Texto blanco</p>
+
+<!-- Fondos -->
+<div class="bg-brown">Fondo marrón</div>
+<div class="bg-beige">Fondo beige</div>
+<div class="bg-black">Fondo negro</div>
+<div class="bg-white">Fondo blanco</div>
+
+<!-- Bordes -->
+<div class="border border-brown">Borde marrón</div>
+<div class="border border-beige">Borde beige</div>
+```
+
+### Responsive Breakpoints
+```css
+/* Mobile (por defecto) */
+@media (max-width: 480px) { }
+
+/* Tablet */
+@media (min-width: 481px) and (max-width: 768px) { }
+
+/* Desktop */
+@media (min-width: 769px) { }
+```
+
+### Cuándo Crear CSS Custom vs Usar Tailwind/Utilities
+
+**Usar utilities del Design System cuando:**
+- Necesitas tipografía predefinida (`.font-heading-1`, etc.)
+- Necesitas colores de la paleta (`.text-brown`, `.bg-beige`)
+- Son estilos simples de layout (Tailwind: `flex`, `gap-4`, `p-4`)
+
+**Crear CSS custom cuando:**
+- Animaciones complejas
+- Componentes con muchos estados y variaciones
+- Estilos específicos del componente que no se reutilizarán
+- Grid layouts complejos
+- Hover effects elaborados
+
+---
+
+## Integración con WooCommerce
+
+### Obtener URL de la Shop Page
+```php
+$shop_url = '';
+if ( function_exists('wc_get_page_permalink') ) {
+    $shop_url = wc_get_page_permalink('shop');
+}
+if ( empty($shop_url) ) {
+    $shop_url = home_url('/shop/');
+}
+```
+
+### Verificar si WooCommerce está Activo
+```php
+if ( class_exists( 'WooCommerce' ) ) {
+    
+}
+```
+
+### Mostrar Productos
+```php
+$args = array(
+    'post_type' => 'product',
+    'posts_per_page' => 12,
+    'orderby' => 'date',
+    'order' => 'DESC',
+);
+
+$products = new WP_Query($args);
+
+if ( $products->have_posts() ) :
+    while ( $products->have_posts() ) : $products->the_post();
+        global $product;
+        $title = get_the_title();
+        $price = $product->get_price_html();
+        $image = get_the_post_thumbnail_url(get_the_ID(), 'medium');
+        $link = get_permalink();
+        ?>
+        <div class="product-card">
+            <a href="<?php echo esc_url($link); ?>">
+                <img src="<?php echo esc_url($image); ?>" alt="<?php echo esc_attr($title); ?>">
+                <h3><?php echo esc_html($title); ?></h3>
+                <div class="price"><?php echo $price; ?></div>
+            </a>
+        </div>
+        <?php
+    endwhile;
+    wp_reset_postdata();
+endif;
+```
+
+---
+
+## Registro Automático de Bloques
+
+El tema tiene un sistema de auto-registro de bloques en `functions.php`. **No necesitas registrar manualmente cada bloque**.
+
+```php
+// En functions.php - líneas 203-228
+add_action('acf/init', function () {
+    $blocks_dir = get_stylesheet_directory() . '/blocks';
+    
+    foreach (glob($blocks_dir . '/*', GLOB_ONLYDIR) as $block_dir) {
+        if (file_exists($block_dir . '/block.json')) {
+            register_block_type($block_dir);
+        }
+        
+        if (file_exists($block_dir . '/acf.php')) {
+            include_once $block_dir . '/acf.php';
+        }
+    }
+});
+```
+
+**Esto significa:**
+1. Solo necesitas crear la carpeta en `/blocks/[nombre]/`
+2. Los archivos `block.json` y `acf.php` se cargan automáticamente
+3. El bloque aparecerá en el editor de WordPress en la categoría "Nalakalu Blocks"
+
+---
+
+## Workflow de Desarrollo
+
+### 1. Planificación
+- [ ] Definir el propósito del bloque
+- [ ] Identificar qué campos de contenido necesita
+- [ ] Diseñar el layout (sketch o wireframe)
+- [ ] Verificar si ya existen componentes similares para reutilizar
+
+### 2. Implementación
+- [ ] Crear estructura de carpetas y archivos
+- [ ] Configurar `block.json`
+- [ ] Definir campos ACF en `acf.php`
+- [ ] Crear template en `index.php`
+- [ ] Escribir estilos en `style.css`
+- [ ] (Opcional) Añadir animaciones en `script.js`
+
+### 3. Testing
+- [ ] Probar el bloque en el editor de WordPress
+- [ ] Verificar que todos los campos ACF funcionan
+- [ ] Probar en diferentes dispositivos (responsive)
+- [ ] Verificar animaciones (si aplica)
+- [ ] Probar con `prefers-reduced-motion`
+- [ ] Validar HTML (W3C validator)
+- [ ] Verificar performance (Lighthouse)
+
+### 4. Documentación
+- [ ] Comentar código complejo
+- [ ] Actualizar DESIGN_SYSTEM.md si añades nuevas utilities
+- [ ] (Opcional) Crear screenshot del bloque para referencia
+
+---
+
+## Mejores Prácticas
+
+### Regla General de Código
+- ⚠️ **IMPORTANTE**: **NUNCA agregar comentarios al código sin consultar previamente con el equipo**
+- ✅ Mantener el código limpio, ordenado y autodocumentado
+- ✅ Los nombres de variables y funciones deben ser descriptivos por sí mismos
+- ✅ Solo agregar comentarios cuando sea absolutamente necesario y esté aprobado
+
+### PHP
+- ✅ Siempre escapar outputs: `esc_html()`, `esc_url()`, `esc_attr()`
+- ✅ Verificar que funciones existen antes de usarlas: `function_exists()`
+- ✅ Usar snake_case para variables
+- ✅ Validar y sanitizar inputs del usuario
+- ❌ No usar `echo` sin escapar
+- ❌ No asumir que plugins están activos
+- ❌ No agregar comentarios explicativos sin consultar primero
+
+### CSS
+- ✅ Mobile-first approach
+- ✅ Usar variables CSS para valores reutilizables
+- ✅ Respetar `prefers-reduced-motion`
+- ✅ BEM para nomenclatura de clases
+- ✅ Agrupar media queries al final del archivo
+- ❌ No usar `!important` a menos que sea absolutamente necesario
+- ❌ No hardcodear colores, usar variables del Design System
+- ❌ No agregar comentarios decorativos o explicativos sin consultar
+
+### JavaScript/GSAP
+- ✅ Usar `DOMContentLoaded` o esperar a que el DOM esté listo
+- ✅ Verificar que elementos existen antes de animarlos
+- ✅ Limpiar ScrollTriggers cuando el componente se desmonta
+- ✅ Usar `const` y `let`, evitar `var`
+- ❌ No animar propiedades que causan reflow (width, height, top, left)
+- ❌ No olvidar registrar plugins de GSAP
+- ❌ No agregar comentarios sin consultar primero
+
+### Performance
+- ✅ Lazy loading en imágenes: `loading="lazy"`
+- ✅ Especificar dimensiones de imagen para evitar layout shift
+- ✅ Usar `will-change` solo cuando sea necesario
+- ✅ Optimizar imágenes antes de subirlas
+- ✅ Minimizar uso de selectores complejos en CSS
+- ❌ No cargar librerías completas si solo usas una función
+- ❌ No hacer queries de DB innecesarias
+
+### Accesibilidad
+- ✅ Usar elementos semánticos HTML5
+- ✅ Incluir alt text en todas las imágenes
+- ✅ Asegurar contraste de color adecuado (WCAG AA mínimo)
+- ✅ Navegación por teclado funcional
+- ✅ ARIA labels cuando sea necesario
+- ❌ No usar `div` cuando existe un elemento semántico apropiado
+- ❌ No confiar solo en color para comunicar información
+
+---
+
+## Comandos Útiles
+
+### Desarrollo
+```bash
+# Compilar Tailwind (si usas CLI)
+npx tailwindcss -i ./style.css -o ./dist/output.css --watch
+
+# Linter PHP
+composer phpcs
+
+# Fix PHP formatting
+composer phpcbf
+```
+
+### Git
+```bash
+# Ver cambios
+git status
+
+# Añadir archivos
+git add blocks/nuevo-bloque/
+
+# Commit
+git commit -m "feat: añadir bloque de galería de productos"
+
+# Push
+git push origin main
+```
+
+### WordPress/PHP
+```bash
+# Limpiar caché (si usas plugin de caché)
+wp cache flush
+
+# Verificar errores PHP
+tail -f /path/to/error.log
+```
+
+---
+
+## Troubleshooting
+
+### El bloque no aparece en el editor
+1. Verificar que `block.json` tiene el nombre correcto
+2. Verificar que la categoría es `"nalakalu"`
+3. Limpiar caché del navegador
+4. Verificar logs de error en wp-content/debug.log
+
+### Los campos ACF no se muestran
+1. Verificar que ACF Pro está activo
+2. Verificar que el `value` en `location` coincide con el `name` de `block.json`
+3. Verificar que `acf/include_fields` hook se está ejecutando
+4. Revisar error logs
+
+### Las animaciones GSAP no funcionan
+1. Verificar que GSAP está cargado: `console.log(gsap)`
+2. Verificar que los selectores son correctos
+3. Usar `markers: true` en ScrollTrigger para debug
+4. Verificar consola para errores JS
+
+### Los estilos no se aplican
+1. Verificar que `style.css` está en la carpeta correcta
+2. Limpiar caché del navegador
+3. Verificar especificidad de selectores CSS
+4. Usar inspector de elementos para ver qué estilos se están aplicando
+
+---
+
+## Recursos
+
+### Documentación Oficial
+- **WordPress Blocks**: https://developer.wordpress.org/block-editor/
+- **ACF Blocks**: https://www.advancedcustomfields.com/resources/blocks/
+- **GSAP**: https://greensock.com/docs/
+- **Tailwind CSS**: https://tailwindcss.com/docs
+- **WooCommerce**: https://woocommerce.com/document/
+
+### Herramientas
+- **Dashicons**: https://developer.wordpress.org/resource/dashicons/
+- **Google Fonts**: https://fonts.google.com/specimen/Fraunces
+- **GSAP Ease Visualizer**: https://greensock.com/ease-visualizer/
+- **Can I Use**: https://caniuse.com/
+
+### Inspiración
+- **Awwwards**: https://www.awwwards.com/
+- **Dribbble**: https://dribbble.com/tags/ecommerce
+
+---
+
+## Checklist para un Nuevo Bloque
+
+Copiar este checklist al empezar un nuevo bloque:
+
+```markdown
+## Bloque: [Nombre del Bloque]
+
+### Setup Inicial
+- [ ] Crear carpeta en `/blocks/[nombre]/`
+- [ ] Crear `block.json` con configuración correcta
+- [ ] Definir campos en `acf.php`
+- [ ] Crear template en `index.php`
+- [ ] Crear `style.css`
+- [ ] (Opcional) Crear `script.js` para animaciones
+
+### Desarrollo
+- [ ] Implementar HTML semántico en `index.php`
+- [ ] Usar clases del Design System donde aplique
+- [ ] Escapar todos los outputs PHP
+- [ ] Añadir clases para animación con `.animated`
+- [ ] Implementar estilos responsive
+- [ ] Añadir variables CSS para valores reutilizables
+- [ ] Implementar animaciones GSAP (si aplica)
+- [ ] Respetar `prefers-reduced-motion`
+
+### Testing
+- [ ] Verificar bloque aparece en editor
+- [ ] Probar todos los campos ACF
+- [ ] Probar en mobile (< 480px)
+- [ ] Probar en tablet (480px - 768px)
+- [ ] Probar en desktop (> 768px)
+- [ ] Verificar animaciones funcionan correctamente
+- [ ] Probar con `prefers-reduced-motion` activado
+- [ ] Validar HTML (W3C)
+- [ ] Performance test (Lighthouse)
+
+### Documentación
+- [ ] Consultar si es necesario agregar comentarios al código
+- [ ] Actualizar `.cursorrules` si hay cambios en metodología
+- [ ] Actualizar `DESIGN_SYSTEM.md` si añades utilities
+
+### Deploy
+- [ ] Limpiar console.logs y código de debug
+- [ ] Remover `markers: true` de ScrollTrigger
+- [ ] Commit con mensaje descriptivo
+- [ ] Push a repositorio
+```
+
+---
+
+## Notas Finales
+
+- ⚠️ **CRÍTICO: NO agregar comentarios al código sin consultar previamente** - Mantener el código limpio es fundamental
+- **Siempre prioriza la experiencia del usuario**: performance, accesibilidad, UX
+- **Reutiliza antes de crear**: verifica si ya existe un bloque o componente similar
+- **Código autodocumentado**: usa nombres descriptivos para variables y funciones
+- **Mobile first**: la mayoría de usuarios visitarán desde móvil
+- **Testea en dispositivos reales**: los emuladores no son suficientes
+- **Mantén el Design System actualizado**: es la fuente de verdad del proyecto
+
+¡Feliz coding! 🚀
+

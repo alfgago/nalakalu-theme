@@ -1,0 +1,559 @@
+/* ===== Scope del bloque ===== */
+.nl-hotspots.hs-skin { overflow-x: hidden; }
+
+.nl-hotspots .hs-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0rem 8rem 6rem 8rem;
+}
+
+.nl-hotspots .carousel-wrapper {
+  position: relative;
+  width: 100%;
+  padding: 0;
+}
+
+.nl-hotspots .carousel-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 50px;
+  margin-bottom: 0;
+}
+
+.nl-hotspots .left-panel {
+  flex-shrink: 0;
+  width: 30%;
+}
+
+.nl-hotspots .testimonial {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+  width: 40rem;
+  border-radius: 16px;
+  background: rgb(240 235 235 / 44%);
+  backdrop-filter: blur(14.3px);
+  padding: 3rem;
+}
+
+.nl-hotspots .product-card {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0rem 3rem 0rem 0rem;
+}
+
+.nl-hotspots .product-card > a {
+  display: block;
+  width: 100%;
+}
+
+.nl-hotspots .product-card .product-image {
+  display: block;
+  width: 100% !important;
+  --hs-pimg-h: 20rem;
+  height: clamp(220px, 28vw, var(--hs-pimg-h)) !important;
+  object-fit: cover;
+  object-position: center;
+  background: transparent !important;
+  border-radius: 5px;
+}
+
+.nl-hotspots .product-card .product-info {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  justify-content: space-between;
+}
+
+.nl-hotspots .product-details a {
+  color: var(--color-cafe);
+}
+
+.nl-hotspots .testimonial h2 {
+  margin-bottom: 8px;
+}
+
+.nl-hotspots .testimonial .role {
+  margin-bottom: 20px;
+}
+
+.nl-hotspots .main-carousel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.nl-hotspots .carousel-main-image {
+  position: relative;
+  width: 100%;
+}
+
+.nl-hotspots .carousel-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nl-hotspots .carousel-slide {
+  min-width: 100%;
+  position: relative;
+}
+
+.nl-hotspots .woocommerce-lookbook,
+.nl-hotspots .woocommerce-lookbook-inner,
+.nl-hotspots .wlb-lookbook-item-wrapper {
+  width: 100% !important;
+  display: block;
+}
+
+.nl-hotspots .woocommerce-lookbook-inner {
+  position: relative;
+  height: 600px;
+  overflow: hidden;
+}
+
+/* La imagen “cubre” el contenedor */
+.nl-hotspots .woocommerce-lookbook .wlb-image,
+.nl-hotspots .woocommerce-lookbook-inner > img.wlb-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Ocultar globitos nativos */
+.nl-hotspots .wlb-speech,
+.nl-hotspots .woo-lookbook .speech,
+.nl-hotspots .woo-lookbook .speech-bubble {
+  display: none !important;
+}
+
+/* Flechas */
+.nl-hotspots .nav-buttons {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  display: flex;
+  gap: 15px;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.nl-hotspots .nav-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: auto;
+  position: relative;
+  z-index: 10000;
+}
+
+.nl-hotspots .nav-btn:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.nl-hotspots .nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nl-hotspots .nav-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: #2c2c2c;
+  stroke-width: 2;
+}
+
+.nl-hotspots .nav-buttons--mobile {
+  display: none !important;
+}
+
+/* Thumbs */
+.nl-hotspots .thumbnail-preview {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 10px 0;
+  scrollbar-width: none;
+}
+
+.nl-hotspots .thumbnail {
+  flex-shrink: 0;
+  width: 200px;
+  height: 140px;
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: all .3s ease;
+  border: 3px solid transparent;
+}
+
+.nl-hotspots .thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .3s ease;
+  display: block;
+  border-radius: 3px;
+}
+
+.nl-hotspots .thumbnail:hover img {
+  transform: scale(1.05);
+}
+
+.nl-hotspots .dots-indicator {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.nl-hotspots .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all .3s ease;
+}
+
+.nl-hotspots .dot.active {
+  background: rgba(255,255,255,0.95);
+  transform: scale(1.2);
+}
+
+/* Modal base */
+.nl-hotspots .hs-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+}
+
+.nl-hotspots .hs-modal.is-open {
+  display: block;
+}
+
+.nl-hotspots .hs-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+}
+
+.nl-hotspots .hs-modal__sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+  padding: 14px 16px 18px;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.nl-hotspots .hs-modal__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.nl-hotspots .hs-modal__close {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+  cursor: pointer;
+}
+
+.nl-hotspots .hs-modal__img {
+  width: 100%;
+  height: clamp(220px, 60vw, 360px);
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+}
+
+.nl-hotspots .hs-modal__info {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+  align-items: flex-start;
+}
+
+.nl-hotspots .hs-modal__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nl-hotspots .hs-modal__cta {
+  display: flex;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.12);
+  text-decoration: none;
+  justify-content: center;
+}
+
+/* evitar scroll de fondo cuando el modal está abierto */
+html.hs-modal-open,
+body.hs-modal-open {
+  overflow: hidden !important;
+}
+
+.font-heading-1.light{
+  font-weight: 300;
+}
+
+
+/* Mobile: que los botones SI reciban click */
+@media (max-width: 768px) {
+  .nl-hotspots .nav-buttons {
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .nl-hotspots .nav-btn {
+    pointer-events: auto;
+  }
+}
+
+/* Responsivo */
+@media (max-width: 1024px) {
+  .nl-hotspots .carousel-content {
+    flex-direction: column;
+  }
+
+  .nl-hotspots .left-panel {
+    width: 100%;
+  }
+
+  .nl-hotspots .hs-title {
+    font-size: 48px;
+  }
+
+  .nl-hotspots .woocommerce-lookbook .wlb-image {
+    height: 420px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-buttons--desktop {
+    display: none !important;
+  }
+
+  .nav-buttons--mobile {
+    display: flex !important;
+    position: static;
+    margin-top: 12px;
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 50;
+    pointer-events: auto;
+  }
+
+  .nav-buttons--mobile .nav-btn {
+    pointer-events: auto;
+  }
+
+  .nl-hotspots .thumbnail-preview {
+    display: none !important;
+  }
+
+  .nl-hotspots .hs-container {
+    padding: 4rem 2rem;
+  }
+
+  .nl-hotspots .carousel-content {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .nl-hotspots .left-panel {
+    width: 100%;
+  }
+
+  /* Título + overline en la misma línea, texto abajo */
+  .nl-hotspots .testimonial {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "name role"
+      "text text";
+    column-gap: 12px;
+    row-gap: 10px;
+    align-items: baseline;
+  }
+
+  .nl-hotspots .testimonial h2 {
+    grid-area: name;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .nl-hotspots .testimonial .role {
+    grid-area: role;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .nl-hotspots .testimonial .testimonial-text {
+    grid-area: text;
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* En mobile el product-card NO se ve */
+  .nl-hotspots .product-card {
+    display: none !important;
+  }
+
+  /* En mobile NO hay thumbs */
+  .nl-hotspots .thumbnail-preview {
+    display: none !important;
+  }
+
+  /* Alto del lookbook más mobile-friendly */
+  .nl-hotspots .woocommerce-lookbook-inner {
+    height: clamp(320px, 70vw, 520px);
+  }
+
+  /* Flechas abajo de la imagen */
+  .nl-hotspots .nav-buttons {
+    position: static;
+    margin-top: 12px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .nl-hotspots .nav-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .nl-hotspots .dots-indicator {
+    top: 12px;
+    right: 12px;
+  }
+
+  /* Modal Mobile */
+  html.hs-modal-open,
+  body.hs-modal-open {
+    overflow: hidden !important;
+  }
+
+  .nl-hotspots .hs-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+  }
+
+  .nl-hotspots .hs-modal.is-open {
+    display: block;
+  }
+
+  .nl-hotspots .hs-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+  }
+
+  .nl-hotspots .hs-modal__sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    border-radius: 18px 18px 0 0;
+    padding: 14px 16px 18px;
+    max-height: 80vh;
+    overflow: auto;
+  }
+
+  .nl-hotspots .hs-modal__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .nl-hotspots .hs-modal__close {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.12);
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .nl-hotspots .hs-modal__img {
+    width: 100%;
+    height: clamp(220px, 60vw, 360px);
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+  }
+
+  .nl-hotspots .hs-modal__info {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 12px;
+    align-items: flex-start;
+  }
+
+  .nl-hotspots .hs-modal__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .nl-hotspots .hs-modal__cta {
+    display: inline-flex;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.12);
+    text-decoration: none;
+    justify-content: center;
+  }
+}

@@ -57,6 +57,15 @@ add_action('acf/include_fields', function () {
                 'preview_size' => 'medium',
                 'library' => 'all',
             ),
+            array(
+                  'key'           => 'field_show_cta',
+                  'label'         => 'Mostrar botón "Ver productos"',
+                  'name'          => 'show_cta',
+                  'type'          => 'true_false',
+                  'ui'            => 1,
+                  'default_value' => 1, // visible por defecto
+                ),
+
         ),
         'location' => array(
             array(

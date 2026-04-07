@@ -1,0 +1,22 @@
+{
+  "name": "nalakalu/hero-image",
+  "title": "Hero Image",
+  "description": "Hero a pantalla completa con imagen de fondo y texto destacado.",
+  "category": "design",
+  "icon": "format-image",
+  "keywords": ["hero", "cover", "image"],
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "supports": {
+    "align": ["full", "wide"],
+    "anchor": true,
+    "alignWide": true,
+    "spacing": {
+      "margin": true,
+      "padding": false
+    }
+  },
+  "style": "file:./style.css"
+}

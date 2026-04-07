@@ -1,0 +1,22 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/text-marquee",
+  "title": "Marquesina de texto",
+  "category": "design",
+  "icon": "update",
+  "description": "Marquesina infinita con 2–3 frases repetidas. Color de texto y bordes configurable.",
+  "keywords": ["marquee", "scroll", "texto"],
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "spacing": {
+      "padding": true,
+      "margin": ["top", "bottom"]
+    }
+  },
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "style": "file:./style.css"
+}

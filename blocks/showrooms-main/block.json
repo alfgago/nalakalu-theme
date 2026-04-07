@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 2,
+  "name": "nalakalu/showrooms-main",
+  "title": "Showrooms main",
+  "description": "Bloque que muestra los 3 showrooms principales.",
+  "category": "layout",
+  "icon": "building",
+  "keywords": [ "showroom", "local", "tienda" ],
+  "supports": {
+    "align": [ "full", "wide" ],
+    "anchor": true
+  },
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "style": "file:./style.css",
+  "example": {
+    "attributes": {
+      "data": {
+        "isExample": true
+      }
+    }
+  }
+}

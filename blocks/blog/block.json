@@ -1,0 +1,19 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/blog",
+  "title": "Blog",
+  "category": "widgets",
+  "icon": "admin-post",
+  "description": "Listado horizontal de posts con arrastre (drag) y fondo opcional.",
+  "keywords": ["blog", "posts", "artículos", "news"],
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "spacing": { "padding": true, "margin": ["top", "bottom"] }
+  },
+  "acf": {
+    "mode": "preview",
+    "renderTemplate": "index.php"
+  },
+  "style": "file:./style.css"
+}

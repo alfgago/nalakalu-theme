@@ -1,0 +1,26 @@
+
+.nl-banner { position: relative; }
+
+.nl-banner .nlb-hero{ position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;margin-top:4rem;}
+
+
+.nl-banner.has-bg .nlb-hero::before{ content: ""; position: absolute; inset: 0; background-image: var(--banner-bg); background-size: cover; background-position: center; background-repeat: no-repeat; z-index: 1;}
+
+
+.nl-banner .nlb-hero::after{  content: "";  position: absolute;  inset: 0;  background: rgba(0,0,0,.25);z-index: 2;}
+
+.nl-banner .nlb-content{  position: relative;  z-index: 3;  text-align: center;  color: #fff;  max-width: 100%;  margin: 0 auto; display: flex; flex-direction: column;  align-items: center;    justify-content: center;    gap:2.5rem;   padding:6rem 0rem;}
+
+.nlb-content .font-body-medium-light{max-width:55rem; margin-top:1rem}
+.nlb-content .font-heading-1, .font-overline{margin:0;}
+
+@media(max-width:768px){
+    .nl-banner .nlb-hero{
+        padding-left:2rem;
+        padding-right:2rem;
+    }
+    
+    .nl-banner .nlb-hero{
+        margin-top:0rem;
+    }
+}

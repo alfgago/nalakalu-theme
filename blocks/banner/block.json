@@ -1,0 +1,19 @@
+{
+  "apiVersion": 2,
+  "name": "nalakalu/banner",
+  "title": "Banner with Text",
+  "category": "design",
+  "icon": "cover-image",
+  "description": "Sección de banner con imagen de fondo, pre-título, título y descripción.",
+  "keywords": ["banner", "hero", "portada", "texto"],
+  "supports": {
+    "align": ["wide", "full"],
+    "anchor": true,
+    "spacing": {
+      "margin": true,
+      "padding": true
+    }
+  },
+  "style": "file:style.css",
+  "render": "file:index.php"
+}

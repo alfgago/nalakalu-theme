@@ -1,0 +1,211 @@
+/* ===== Contact Form Block (scoped) ===== */
+
+.nlk-contact-section {
+  width: 100%;
+}
+
+.nlk-contact-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  min-height: 100vh;
+}
+
+.nlk-contact-form{
+    margin-top:5rem;
+}
+
+.nlk-contact-image-column {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.nlk-contact-form-column {
+  padding: 8rem 7rem 7rem 5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #fafafa;
+}
+
+.nlk-contact-form-column .font-heading-1{
+    margin:0rem 0rem 1.5rem 0rem;
+}
+
+.nlk-contact-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.nlk-contact-form-group {
+  margin-bottom: 30px;
+}
+
+.nlk-contact-button-container{
+display: flex;
+justify-content: flex-end;
+}
+
+.nlk-contact-form-group label {
+ display: block;
+color: #3D332B;
+font-family: var(--font-space-mono);
+font-size: 20px;
+font-style: normal;
+font-weight: 400;
+line-height: 28px;
+}
+
+.nlk-contact-form-group input,
+.nlk-contact-form-group textarea {
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid #d0d0d0;
+  background-color: transparent;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.nlk-contact-form-group input::placeholder,
+.nlk-contact-form-group textarea::placeholder {
+  color: #aaaaaa;
+}
+
+.nlk-contact-form-group input:focus,
+.nlk-contact-form-group textarea:focus {
+  border-bottom-color: #8b6f47;
+}
+
+.nlk-contact-form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.nlk-contact-radio-group {
+  display: flex;
+  gap: 30px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.nlk-contact-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nlk-contact-radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.nlk-contact-radio-option input[type="radio"]:checked {
+  accent-color: #8b6f47;
+}
+
+.nlk-contact-radio-option label {
+  font-size: 14px;
+  color: #666666;
+  cursor: pointer;
+  margin: 0;
+}
+
+
+
+
+.nlk-contact-success {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #2f7a3b;
+}
+
+.header{
+    background:white !important;
+    border-bottom: 1px solid #B7A48D !important;
+}
+
+.logo .custom-logo {
+ filter: invert(1) !important;
+}
+
+.header .menu-btn span {
+    background-color: #3D332B !important;
+}
+
+.header .burguer-menu p {
+    color: #3D332B !important;
+}
+
+.header .header-actions a {
+    color: #3D332B !important;
+}
+
+.header .icon-btn svg {
+    stroke: #3D332B !important;
+}
+
+.xoo-wsc-sc-cont {
+    color: #000000 !important;
+}
+
+.nlk-header.header .xoo-wsc-sc-cont .xoo-wsc-sc-bki {
+    color: #3D332B !important;
+}
+
+.nlk-header.header .xoo-wsc-sc-cont .xoo-wsc-sc-count {
+    background: #3D332B !important;
+    color: #ffffff !important;
+}
+
+.black-logo {
+    filter: invert(0%) !important;
+}
+
+
+@media (max-width: 968px) {
+  .nlk-contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nlk-contact-image-column {
+    min-height: 400px;
+  }
+  .nlk-contact-form .btn-cafe{
+    width:100%;
+  }
+
+  .nlk-contact-form-column {
+    padding: 60px 40px;
+  }
+
+  .nlk-contact-title {
+    font-size: 48px;
+  }
+
+  .nlk-contact-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .nlk-contact-radio-group {
+    flex-direction: column;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nlk-contact-form-column {
+    padding: 40px 24px;
+  }
+
+  .nlk-contact-title {
+    font-size: 42px;
+  }
+
+  .nlk-contact-description {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,49 @@
+/* ===== Base existente ===== */
+.nl-blog { position: relative; overflow: hidden; }
+.nl-blog.has-bg::before{
+  content: ""; position: absolute; inset: 0;
+  background-image: var(--nlb-bg);
+  background-size: cover; background-position: center center;
+  pointer-events: none; z-index: 0;
+}
+.nl-blog .nlb-inner { position: relative; z-index: 1; padding: 3rem 8rem 3rem 0rem; width:100%; margin: 0 auto; }
+.nlb-header{display:flex; justify-content:space-between; align-items:center;margin-bottom: 50px; padding: 0rem 8.4rem;}
+.nl-blog .nlb-wrapper{ position: relative; overflow: hidden; padding: 10px 0 80px; cursor: grab; user-select: none; width:100vw;}
+.nl-blog .nlb-wrapper.is-dragging{ cursor: grabbing; }
+.nl-blog .nlb-track{display: flex; gap: 30px; padding: 0 20px; transition: transform .3s cubic-bezier(0.25,0.46,0.45,0.94); will-change: transform;}
+.nl-blog .nlb-card{min-width: 340px; width: 32.75rem; flex-shrink: 0;background: rgba(255, 255, 255, 0.44);backdrop-filter: blur(19.9px);border: 1px solid rgba(255, 255, 255, 0.25);border-radius: 8px; overflow: hidden; padding:10px;}
+.nl-blog .nlb-card__image{ width:100%; height: 280px; display:block; object-fit: cover; pointer-events: none; user-select: none; -webkit-user-drag: none}
+.nl-blog .nlb-card__content{ padding: 32px; }
+.btn-small {font-size: 1.5rem;background:transparent;color:var(--color-cafe);padding:0;}
+
+.nlb-dots{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:.6rem;
+  padding: .5rem 0 0;
+}
+.nlb-dot{
+  width:10px; height:10px; border-radius:50%;
+  border:0; background:#E3D1BA; padding:0; cursor:pointer;
+}
+.nlb-dot.is-active{ background:#B7A48D; }
+
+/* ===== Mobile ===== */
+@media(max-width: 768px){
+  .nlb-header {padding:3rem 1.5rem; margin-bottom:0;}
+  .nlb-inner .mobile-only.btn{display:flex; width:100%; color:white; margin-top:2rem;}
+  .nl-blog .nlb-inner{padding:3rem 1.5rem;}
+
+  .nl-blog .nlb-wrapper{ cursor: default;padding-bottom:30px; }
+
+  .nlb-dots{ display:flex; }
+
+   .nl-blog .nlb-wrapper{ width: 100%; }
+
+  .nl-blog .nlb-track{ padding: 0; }
+
+  .nl-blog .nlb-card{ min-width: 100%; width: 100%; }
+  .nl-blog .nlb-card__content{padding: 20px 5px;}
+
+}
