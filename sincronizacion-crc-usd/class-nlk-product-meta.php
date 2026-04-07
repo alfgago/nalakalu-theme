@@ -24,9 +24,8 @@ class NLK_Product_Meta {
 		add_action( 'woocommerce_variation_options_pricing', array( __CLASS__, 'render_crc_field_variation' ), 10, 3 );
 		add_action( 'woocommerce_save_product_variation', array( __CLASS__, 'save_crc_field_variation' ), 10, 2 );
 
-		// Columna en listado de productos
-		add_filter( 'manage_edit-product_columns', array( __CLASS__, 'add_crc_column' ) );
-		add_action( 'manage_product_posts_custom_column', array( __CLASS__, 'render_crc_column' ), 10, 2 );
+		// Append CRC al precio en la columna existente de WooCommerce
+		add_action( 'manage_product_posts_custom_column', array( __CLASS__, 'append_crc_to_price_column' ), 20, 2 );
 	}
 
 	/**
@@ -131,38 +130,23 @@ class NLK_Product_Meta {
 	}
 
 	/**
-	 * Agrega columna "Precio CRC" al listado de productos.
+	 * Agrega el precio CRC entre paréntesis debajo del precio USD
+	 * en la columna "Precio" existente de WooCommerce.
 	 */
-	public static function add_crc_column( $columns ) {
-		$new_columns = array();
-		foreach ( $columns as $key => $label ) {
-			$new_columns[ $key ] = $label;
-			if ( $key === 'price' ) {
-				$new_columns['precio_crc'] = 'Precio CRC';
-			}
-		}
-		return $new_columns;
-	}
-
-	/**
-	 * Renderiza el valor de la columna CRC.
-	 */
-	public static function render_crc_column( $column, $post_id ) {
-		if ( $column !== 'precio_crc' ) {
+	public static function append_crc_to_price_column( $column, $post_id ) {
+		if ( $column !== 'price' ) {
 			return;
 		}
 
 		$fixed = get_post_meta( $post_id, self::FIXED_USD_KEY, true );
 		if ( $fixed === 'yes' ) {
-			echo '<span title="Este producto usa precio USD fijo">USD fijo</span>';
+			echo '<br><small style="color:#888;">(USD fijo)</small>';
 			return;
 		}
 
 		$precio = get_post_meta( $post_id, self::META_KEY, true );
-		if ( $precio ) {
-			echo '₡' . esc_html( number_format( floatval( $precio ), 2 ) );
-		} else {
-			echo '—';
+		if ( $precio && floatval( $precio ) > 0 ) {
+			echo '<br><small style="color:#888;">(₡' . esc_html( number_format( floatval( $precio ), 0, ',', '.' ) ) . ')</small>';
 		}
 	}
 }
