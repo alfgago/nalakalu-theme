@@ -78,18 +78,22 @@ class NLK_Admin_Settings {
 			return;
 		}
 
-		// Refrescar tipo de cambio desde BCCR
+		// Refrescar tipo de cambio desde BCCR (con debug)
 		if ( isset( $_GET['nlk_action'] ) && $_GET['nlk_action'] === 'refresh_tc' ) {
 			check_admin_referer( 'nlk_crc_usd_refresh_tc' );
-			$rate = NLK_Exchange_Rate::force_refresh();
-			if ( $rate > 0 ) {
+			$result = NLK_Exchange_Rate::force_refresh_debug();
+
+			// Guardar debug en transient para mostrarlo en la página
+			set_transient( 'nlk_crc_usd_last_debug', $result['debug'], 5 * MINUTE_IN_SECONDS );
+
+			if ( $result['rate'] > 0 ) {
 				add_settings_error( 'nlk_crc_usd', 'tc_refreshed',
-					sprintf( 'Tipo de cambio actualizado: ₡%s por $1 USD', number_format( $rate, 2 ) ),
+					sprintf( 'Tipo de cambio actualizado: ₡%s por $1 USD (ver debug abajo)', number_format( $result['rate'], 2 ) ),
 					'success'
 				);
 			} else {
 				add_settings_error( 'nlk_crc_usd', 'tc_error',
-					'No se pudo obtener el tipo de cambio del BCCR. Verifique la conexión.',
+					'No se pudo obtener el tipo de cambio del BCCR (ver debug abajo).',
 					'error'
 				);
 			}
@@ -201,6 +205,22 @@ class NLK_Admin_Settings {
 			<h1>Sincronización CRC → USD</h1>
 
 			<?php settings_errors( 'nlk_crc_usd' ); ?>
+
+			<?php
+			// Mostrar debug de última consulta BCCR si existe
+			$last_debug = get_transient( 'nlk_crc_usd_last_debug' );
+			if ( $last_debug && is_array( $last_debug ) ) :
+				delete_transient( 'nlk_crc_usd_last_debug' );
+			?>
+			<div class="card" style="max-width:700px;margin-bottom:20px;padding:15px 20px;border-left:4px solid #0073aa;">
+				<h3 style="margin-top:0;">Debug API BCCR</h3>
+				<pre style="background:#f5f5f5;padding:12px;font-size:12px;line-height:1.7;max-height:500px;overflow:auto;white-space:pre-wrap;border:1px solid #ddd;"><?php
+					foreach ( $last_debug as $line ) {
+						echo esc_html( $line ) . "\n";
+					}
+				?></pre>
+			</div>
+			<?php endif; ?>
 
 			<!-- Panel informativo -->
 			<div class="card" style="max-width:700px;margin-bottom:20px;padding:15px 20px;">

@@ -114,6 +114,26 @@ class NLK_Exchange_Rate {
 	}
 
 	/**
+	 * Fuerza refrescar con debug completo para diagnóstico.
+	 *
+	 * @return array { rate: float, debug: string[] }
+	 */
+	public static function force_refresh_debug() {
+		delete_transient( self::TRANSIENT_KEY );
+		delete_transient( 'nlk_crc_usd_bccr_compra' );
+
+		$date = current_time( 'd/m/Y' );
+		$result = self::call_bccr_api_debug( self::INDICATOR_VENTA, $date );
+
+		if ( $result['rate'] > 0 ) {
+			set_transient( self::TRANSIENT_KEY, $result['rate'], self::CACHE_EXPIRATION );
+			set_transient( self::TRANSIENT_FALLBACK_KEY, $result['rate'], self::FALLBACK_EXPIRATION );
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Llama al webservice del BCCR.
 	 *
 	 * @param string $indicator Código del indicador (317=compra, 318=venta).
@@ -121,41 +141,88 @@ class NLK_Exchange_Rate {
 	 * @return float Valor del indicador. 0 si falla.
 	 */
 	private static function call_bccr_api( $indicator, $date ) {
-		$response = wp_remote_post(
-			'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos',
-			array(
-				'body'    => array(
-					'Indicador'         => $indicator,
-					'FechaInicio'       => $date,
-					'FechaFinal'        => $date,
-					'SubNiveles'        => 'S',
-					'Nombre'            => 'Nalakalu',
-					'CorreoElectronico' => 'info@nalakalu.com',
-					'Token'             => 'BE26A0TU1L',
-				),
-				'timeout' => 15,
-			)
+		$result = self::call_bccr_api_debug( $indicator, $date );
+		return $result['rate'];
+	}
+
+	/**
+	 * Llama al webservice del BCCR con info de debug.
+	 *
+	 * @param string $indicator Código del indicador.
+	 * @param string $date      Fecha en formato dd/mm/YYYY.
+	 * @return array { rate: float, debug: string[] }
+	 */
+	private static function call_bccr_api_debug( $indicator, $date ) {
+		$debug = array();
+		$url   = 'https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicos';
+		$body  = array(
+			'Indicador'         => $indicator,
+			'FechaInicio'       => $date,
+			'FechaFinal'        => $date,
+			'SubNiveles'        => 'S',
+			'Nombre'            => 'Nalakalu',
+			'CorreoElectronico' => 'info@nalakalu.com',
+			'Token'             => 'BE26A0TU1L',
 		);
 
-		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-			return 0;
+		$debug[] = sprintf( 'URL: %s', $url );
+		$debug[] = sprintf( 'Indicador: %s (%s)', $indicator, $indicator === '318' ? 'venta' : 'compra' );
+		$debug[] = sprintf( 'Fecha: %s', $date );
+		$debug[] = sprintf( 'Params: %s', wp_json_encode( $body ) );
+
+		$response = wp_remote_post( $url, array(
+			'body'    => $body,
+			'timeout' => 15,
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			$debug[] = sprintf( 'ERROR wp_remote_post: %s', $response->get_error_message() );
+			return array( 'rate' => 0, 'debug' => $debug );
 		}
 
-		$body = wp_remote_retrieve_body( $response );
-		if ( empty( $body ) ) {
-			return 0;
+		$http_code = wp_remote_retrieve_response_code( $response );
+		$debug[] = sprintf( 'HTTP status: %d', $http_code );
+
+		if ( $http_code !== 200 ) {
+			$debug[] = sprintf( 'Response body (primeros 500 chars): %s', substr( wp_remote_retrieve_body( $response ), 0, 500 ) );
+			return array( 'rate' => 0, 'debug' => $debug );
 		}
 
-		$xml = @simplexml_load_string( $body );
+		$response_body = wp_remote_retrieve_body( $response );
+		$debug[] = sprintf( 'Response length: %d bytes', strlen( $response_body ) );
+
+		if ( empty( $response_body ) ) {
+			$debug[] = 'ERROR: Body vacío';
+			return array( 'rate' => 0, 'debug' => $debug );
+		}
+
+		$debug[] = sprintf( 'Response body (primeros 1000 chars): %s', substr( $response_body, 0, 1000 ) );
+
+		$xml = @simplexml_load_string( $response_body );
 		if ( $xml === false ) {
-			return 0;
+			$debug[] = 'ERROR: No se pudo parsear XML';
+			$xml_errors = libxml_get_errors();
+			foreach ( $xml_errors as $err ) {
+				$debug[] = sprintf( 'XML error: %s (línea %d)', trim( $err->message ), $err->line );
+			}
+			libxml_clear_errors();
+			return array( 'rate' => 0, 'debug' => $debug );
 		}
+
+		$debug[] = 'XML parseado OK';
 
 		$values = $xml->xpath( '//NUM_VALOR' );
 		if ( empty( $values ) ) {
-			return 0;
+			$debug[] = 'ERROR: No se encontró //NUM_VALOR en el XML';
+			// Mostrar todos los nodos para diagnóstico
+			$debug[] = sprintf( 'Nodos raíz: %s', implode( ', ', array_keys( (array) $xml ) ) );
+			return array( 'rate' => 0, 'debug' => $debug );
 		}
 
-		return (float) str_replace( ',', '.', (string) $values[0] );
+		$raw_value = (string) $values[0];
+		$rate      = (float) str_replace( ',', '.', $raw_value );
+		$debug[]   = sprintf( 'NUM_VALOR raw: "%s" → float: %s', $raw_value, $rate );
+
+		return array( 'rate' => $rate, 'debug' => $debug );
 	}
 }
