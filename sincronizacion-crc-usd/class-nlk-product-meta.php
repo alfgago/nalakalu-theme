@@ -26,6 +26,7 @@ class NLK_Product_Meta {
 
 		// Append CRC al precio en la columna existente de WooCommerce
 		add_action( 'manage_product_posts_custom_column', array( __CLASS__, 'append_crc_to_price_column' ), 20, 2 );
+		add_action( 'admin_head', array( __CLASS__, 'price_column_css' ) );
 	}
 
 	/**
@@ -127,6 +128,17 @@ class NLK_Product_Meta {
 		if ( $fixed !== 'yes' && $precio_crc > 0 ) {
 			NLK_Price_Sync::sync_single_product( $variation_id, $precio_crc );
 		}
+	}
+
+	/**
+	 * Ensancha la columna de precio en el listado de productos.
+	 */
+	public static function price_column_css() {
+		$screen = get_current_screen();
+		if ( ! $screen || $screen->id !== 'edit-product' ) {
+			return;
+		}
+		echo '<style>table.wp-list-table .column-price { width: 15ch; }</style>';
 	}
 
 	/**
