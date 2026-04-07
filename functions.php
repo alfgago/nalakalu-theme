@@ -197,6 +197,13 @@ if (class_exists('WooCommerce')) {
 	require get_template_directory() . '/inc/woocommerce.php';
 }
 
+/**
+ * Sincronización de precios CRC → USD para WooCommerce.
+ */
+if (class_exists('WooCommerce')) {
+	require get_template_directory() . '/sincronizacion-crc-usd/init.php';
+}
+
 add_filter('block_categories_all', function ($categories, $editor_context) {
 	error_log('[Blocks] Registering custom block category: nalakalu');
 
