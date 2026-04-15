@@ -28,6 +28,8 @@ class NLK_Woo_CSV_Import
 	protected static $source_id_cache = array();
 	protected static $summary_cache   = array();
 	protected static $fallback_cache  = array();
+	protected static $source_row_cache = array();
+	protected static $attachment_lookup_cache = array();
 
 	public static function init()
 	{
@@ -411,6 +413,19 @@ class NLK_Woo_CSV_Import
 		}
 
 		if (! empty($variations)) {
+			$parent_bootstrap = self::ensure_missing_parents_for_variations(
+				$chunk['headers'],
+				$variations,
+				$file,
+				$update_existing
+			);
+
+			$stats = self::merge_import_stats($stats, $parent_bootstrap['stats']);
+
+			if (! empty($parent_bootstrap['messages'])) {
+				$messages = array_merge($messages, $parent_bootstrap['messages']);
+			}
+
 			$prepared_variations = self::prepare_rows_for_import($chunk['headers'], $variations, true, $update_existing, $file['basename']);
 			$variation_results   = self::run_importer_for_rows($chunk['headers'], $prepared_variations['rows'], $update_existing);
 
@@ -809,6 +824,90 @@ class NLK_Woo_CSV_Import
 		return $lookup;
 	}
 
+	protected static function find_source_parent_row($file, $reference)
+	{
+		$lookup = self::get_source_row_lookup($file);
+
+		if (empty($lookup)) {
+			return null;
+		}
+
+		$normalized_reference = trim((string) $reference);
+
+		if (0 === strpos($normalized_reference, 'id:')) {
+			$normalized_reference = (string) absint(substr($normalized_reference, 3));
+		}
+
+		if (isset($lookup['by_id'][ $normalized_reference ])) {
+			return $lookup['by_id'][ $normalized_reference ];
+		}
+
+		if (isset($lookup['by_sku'][ $normalized_reference ])) {
+			return $lookup['by_sku'][ $normalized_reference ];
+		}
+
+		return null;
+	}
+
+	protected static function get_source_row_lookup($file)
+	{
+		$path = isset($file['path']) ? (string) $file['path'] : '';
+
+		if ('' === $path) {
+			return array();
+		}
+
+		$key = md5($path . '|' . filemtime($path) . '|' . filesize($path));
+
+		if (isset(self::$source_row_cache[ $key ])) {
+			return self::$source_row_cache[ $key ];
+		}
+
+		$headers = self::read_csv_headers($path);
+		$reader  = self::open_csv_file($path);
+		$lookup  = array(
+			'by_id'  => array(),
+			'by_sku' => array(),
+		);
+
+		if (! $reader || empty($headers)) {
+			self::$source_row_cache[ $key ] = $lookup;
+			return $lookup;
+		}
+
+		$reader->rewind();
+		$reader->fgetcsv();
+
+		while (! $reader->eof()) {
+			$row = self::normalize_csv_row($reader->fgetcsv(), $headers);
+
+			if (null === $row) {
+				continue;
+			}
+
+			$type = strtolower(trim((string) self::row_value($row, 'Tipo')));
+
+			if ('variation' === $type) {
+				continue;
+			}
+
+			$source_id = trim((string) self::row_value($row, 'ID'));
+			$sku       = trim((string) self::row_value($row, 'SKU'));
+
+			if ('' !== $source_id && ! isset($lookup['by_id'][ $source_id ])) {
+				$lookup['by_id'][ $source_id ] = $row;
+			}
+
+			if ('' !== $sku && ! isset($lookup['by_sku'][ $sku ])) {
+				$lookup['by_sku'][ $sku ] = $row;
+			}
+		}
+
+		self::$source_row_cache[ $key ] = $lookup;
+
+		return $lookup;
+	}
+
 	protected static function convert_export1_images($row)
 	{
 		$images = trim((string) self::row_value($row, 'Image URL'));
@@ -821,6 +920,117 @@ class NLK_Woo_CSV_Import
 		$parts = array_values(array_filter(array_map('trim', explode('|', $images))));
 
 		return implode(', ', $parts);
+	}
+
+	protected static function normalize_row_images_for_import($row, &$known_images)
+	{
+		$images    = trim((string) self::row_value($row, 'Imágenes'));
+		$separator = apply_filters('woocommerce_product_import_image_separator', ',');
+
+		if ('' === $images) {
+			return $row;
+		}
+
+		$parts = array_values(array_filter(array_map('trim', explode($separator, $images))));
+
+		if (empty($parts)) {
+			return $row;
+		}
+
+		$normalized = array();
+		$row_images = array();
+
+		foreach ($parts as $image) {
+			$normalized[] = self::normalize_image_reference_for_import($image, $known_images, $row_images);
+		}
+
+		foreach ($row_images as $basename => $marker) {
+			if (! isset($known_images[ $basename ])) {
+				$known_images[ $basename ] = $marker;
+			}
+		}
+
+		self::set_row_value($row, 'Imágenes', implode($separator . ' ', $normalized));
+
+		return $row;
+	}
+
+	protected static function normalize_image_reference_for_import($image, &$known_images, &$row_images)
+	{
+		$image    = trim((string) $image);
+		$basename = self::extract_image_basename($image);
+
+		if ('' === $image || '' === $basename) {
+			return $image;
+		}
+
+		if (isset($known_images[ $basename ])) {
+			return $basename;
+		}
+
+		$attachment_id = self::find_attachment_id_by_basename($basename);
+
+		if ($attachment_id > 0) {
+			$known_images[ $basename ] = $attachment_id;
+			return $basename;
+		}
+
+		$row_images[ $basename ] = true;
+
+		return $image;
+	}
+
+	protected static function extract_image_basename($image)
+	{
+		$image = trim((string) $image);
+
+		if ('' === $image) {
+			return '';
+		}
+
+		$path = wp_parse_url($image, PHP_URL_PATH);
+
+		if (! is_string($path) || '' === $path) {
+			$path = $image;
+		}
+
+		return sanitize_file_name(rawurldecode(wp_basename($path)));
+	}
+
+	protected static function find_attachment_id_by_basename($basename)
+	{
+		global $wpdb;
+
+		$basename = sanitize_file_name((string) $basename);
+
+		if ('' === $basename) {
+			return 0;
+		}
+
+		if (isset(self::$attachment_lookup_cache[ $basename ])) {
+			return self::$attachment_lookup_cache[ $basename ];
+		}
+
+		$attachment_id = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT posts.ID
+				FROM {$wpdb->posts} AS posts
+				INNER JOIN {$wpdb->postmeta} AS postmeta ON posts.ID = postmeta.post_id
+				WHERE posts.post_type = 'attachment'
+				AND postmeta.meta_key = '_wp_attached_file'
+				AND (postmeta.meta_value = %s OR postmeta.meta_value LIKE %s)
+				ORDER BY posts.ID DESC
+				LIMIT 1",
+				$basename,
+				'%/' . $wpdb->esc_like($basename)
+			)
+		);
+
+		if ($attachment_id > 0) {
+			self::$attachment_lookup_cache[ $basename ] = $attachment_id;
+		}
+
+		return $attachment_id;
 	}
 
 	protected static function normalize_csv_row($row, $headers)
@@ -853,13 +1063,14 @@ class NLK_Woo_CSV_Import
 		$prepared             = array();
 		$messages             = array();
 		$unresolved_variation = array();
+		$known_images         = array();
 
 		foreach ($rows as $row) {
 			$source_id     = trim((string) self::row_value($row, 'ID'));
 			$source_sku    = trim((string) self::row_value($row, 'SKU'));
 			$source_parent = trim((string) self::row_value($row, 'Superior'));
 			$existing_id   = $update_existing ? self::resolve_existing_target_id($row) : 0;
-			$prepared_row  = $row;
+			$prepared_row  = self::normalize_row_images_for_import($row, $known_images);
 
 			$prepared_row['ID'] = $existing_id ? (string) $existing_id : '';
 			$prepared_row[ self::SOURCE_ID_META_COLUMN ] = $source_id;
@@ -905,6 +1116,83 @@ class NLK_Woo_CSV_Import
 
 		return array(
 			'rows'     => $prepared,
+			'messages' => $messages,
+		);
+	}
+
+	protected static function ensure_missing_parents_for_variations($headers, $variations, $file, $update_existing)
+	{
+		$stats         = self::empty_import_stats();
+		$messages      = array();
+		$processed_ref = array();
+
+		foreach ($variations as $row) {
+			$source_parent = trim((string) self::row_value($row, 'Superior'));
+
+			if ('' === $source_parent || isset($processed_ref[ $source_parent ])) {
+				continue;
+			}
+
+			$processed_ref[ $source_parent ] = true;
+
+			if (self::find_local_product_id_by_reference($source_parent)) {
+				continue;
+			}
+
+			$parent_result = self::import_missing_parent_from_source($headers, $file, $source_parent, $update_existing);
+			$stats         = self::merge_import_stats($stats, $parent_result['stats']);
+
+			if (! empty($parent_result['messages'])) {
+				$messages = array_merge($messages, $parent_result['messages']);
+			}
+		}
+
+		return array(
+			'stats'    => $stats,
+			'messages' => array_values(array_unique(array_filter($messages))),
+		);
+	}
+
+	protected static function import_missing_parent_from_source($headers, $file, $reference, $update_existing)
+	{
+		$parent_row = self::find_source_parent_row($file, $reference);
+
+		if (! $parent_row) {
+			return array(
+				'stats'    => self::empty_import_stats(),
+				'messages' => array(
+					sprintf('No encontre en el CSV el padre faltante para la referencia %s.', $reference)
+				),
+			);
+		}
+
+		$parent_rows = self::supplement_rows_with_fallback_data(array($parent_row), $file['basename']);
+		$parent_row  = $parent_rows[0];
+
+		$prepared = self::prepare_rows_for_import($headers, array($parent_row), false, $update_existing, $file['basename']);
+		$results  = self::run_importer_for_rows($headers, $prepared['rows'], $update_existing);
+
+		self::sync_source_keys_for_rows(array($parent_row));
+
+		$swatch_results                     = self::sync_swatches_from_rows(array($parent_row));
+		$results['stats']['swatch_terms_updated'] += $swatch_results['updated_terms'];
+
+		$messages = array_merge($prepared['messages'], $results['messages'], $swatch_results['messages']);
+
+		if (self::find_local_product_id_by_reference($reference)) {
+			$messages[] = sprintf(
+				'Padre %s importado desde CSV para resolver variaciones pendientes.',
+				$reference
+			);
+		} else {
+			$messages[] = sprintf(
+				'El padre %s se encontro en el CSV pero no quedo resoluble tras el import.',
+				$reference
+			);
+		}
+
+		return array(
+			'stats'    => $results['stats'],
 			'messages' => $messages,
 		);
 	}
@@ -1506,7 +1794,42 @@ class NLK_Woo_CSV_Import
 
 	protected static function row_value($row, $key)
 	{
-		return isset($row[ $key ]) ? $row[ $key ] : '';
+		$resolved_key = self::find_row_key($row, $key);
+
+		return null !== $resolved_key ? $row[ $resolved_key ] : '';
+	}
+
+	protected static function set_row_value(&$row, $key, $value)
+	{
+		$resolved_key = self::find_row_key($row, $key);
+
+		if (null === $resolved_key) {
+			$row[ $key ] = $value;
+			return;
+		}
+
+		$row[ $resolved_key ] = $value;
+	}
+
+	protected static function find_row_key($row, $key)
+	{
+		if (! is_array($row)) {
+			return null;
+		}
+
+		if (isset($row[ $key ])) {
+			return $key;
+		}
+
+		$normalized_target = self::normalize_string($key);
+
+		foreach ($row as $header => $value) {
+			if ($normalized_target === self::normalize_string($header)) {
+				return $header;
+			}
+		}
+
+		return null;
 	}
 
 	protected static function remove_utf8_bom($value)
