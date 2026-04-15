@@ -1440,10 +1440,16 @@ class NLK_Woo_CSV_Import
 			return 0;
 		}
 
+		$normalized_reference = $reference;
+
 		if (0 === strpos($reference, 'id:')) {
 			$local_id = absint(substr($reference, 3));
 			if ($local_id && wc_get_product($local_id)) {
 				return $local_id;
+			}
+
+			if ($local_id) {
+				$normalized_reference = (string) $local_id;
 			}
 		}
 
@@ -1451,18 +1457,25 @@ class NLK_Woo_CSV_Import
 			return self::$source_id_cache[ $reference ];
 		}
 
-		$product_id = self::find_local_product_id_by_meta(self::SOURCE_META_KEY, $reference);
+		if (isset(self::$source_id_cache[ $normalized_reference ])) {
+			$product_id = self::$source_id_cache[ $normalized_reference ];
+			self::$source_id_cache[ $reference ] = $product_id;
+			return $product_id;
+		}
+
+		$product_id = self::find_local_product_id_by_meta(self::SOURCE_META_KEY, $normalized_reference);
 
 		if (! $product_id) {
-			$product_id = self::find_local_product_id_by_meta(self::SOURCE_SKU_META_KEY, $reference);
+			$product_id = self::find_local_product_id_by_meta(self::SOURCE_SKU_META_KEY, $normalized_reference);
 		}
 
 		if (! $product_id) {
-			$product_id = (int) wc_get_product_id_by_sku($reference);
+			$product_id = (int) wc_get_product_id_by_sku($normalized_reference);
 		}
 
 		if ($product_id > 0) {
 			self::$source_id_cache[ $reference ] = $product_id;
+			self::$source_id_cache[ $normalized_reference ] = $product_id;
 		}
 
 		return $product_id;
