@@ -38,13 +38,11 @@ function nalakalu_woocommerce_setup() {
 add_action( 'after_setup_theme', 'nalakalu_woocommerce_setup' );
 
 /**
- * WooCommerce specific scripts & stylesheets.
- *
- * @return void
+ * WooCommerce star font inline style.
+ * Attached to nl-woo handle (enqueued in functions.php).
  */
-function nalakalu_woocommerce_scripts() {
-	wp_enqueue_style( 'nalakalu-woocommerce-style', get_template_directory_uri() . '/woocommerce.css', array(), _S_VERSION );
-
+add_action( 'wp_enqueue_scripts', function () {
+	if ( ! class_exists( 'WooCommerce' ) ) return;
 	$font_path   = WC()->plugin_url() . '/assets/fonts/';
 	$inline_font = '@font-face {
 			font-family: "star";
@@ -56,10 +54,8 @@ function nalakalu_woocommerce_scripts() {
 			font-weight: normal;
 			font-style: normal;
 		}';
-
-	wp_add_inline_style( 'nalakalu-woocommerce-style', $inline_font );
-}
-add_action( 'wp_enqueue_scripts', 'nalakalu_woocommerce_scripts' );
+	wp_add_inline_style( 'nl-woo', $inline_font );
+} );
 
 /**
  * Disable the default WooCommerce stylesheet.

@@ -204,6 +204,13 @@ if (class_exists('WooCommerce')) {
 	require get_template_directory() . '/sincronizacion-crc-usd/init.php';
 }
 
+/**
+ * Importador batch de productos WooCommerce desde CSV.
+ */
+if (class_exists('WooCommerce')) {
+	require get_template_directory() . '/woo-product-import/init.php';
+}
+
 add_filter('block_categories_all', function ($categories, $editor_context) {
 	error_log('[Blocks] Registering custom block category: nalakalu');
 
