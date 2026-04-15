@@ -30,6 +30,7 @@ class NLK_Woo_CSV_Import
 	protected static $fallback_cache  = array();
 	protected static $source_row_cache = array();
 	protected static $attachment_lookup_cache = array();
+	protected static $json_read_error_cache = array();
 
 	public static function init()
 	{
@@ -270,7 +271,8 @@ class NLK_Woo_CSV_Import
 			$chunk = self::read_json_chunk_file($path);
 
 			if (! $chunk) {
-				WP_CLI::warning('No pude leer el JSON: ' . $path);
+				$error_message = self::get_json_read_error($path);
+				WP_CLI::warning('No pude leer el JSON: ' . $path . ($error_message ? ' | ' . $error_message : ''));
 				continue;
 			}
 
@@ -1000,13 +1002,59 @@ class NLK_Woo_CSV_Import
 
 	protected static function read_json_chunk_file($path)
 	{
+		self::$json_read_error_cache[ $path ] = '';
+
 		if (! is_readable($path)) {
+			self::$json_read_error_cache[ $path ] = 'El archivo no es legible.';
 			return null;
 		}
 
-		$decoded = json_decode((string) file_get_contents($path), true);
+		$contents = file_get_contents($path);
 
-		return is_array($decoded) ? $decoded : null;
+		if (false === $contents) {
+			self::$json_read_error_cache[ $path ] = 'No pude abrir el archivo.';
+			return null;
+		}
+
+		$contents = self::remove_utf8_bom((string) $contents);
+		$decoded  = json_decode($contents, true);
+
+		if (is_array($decoded)) {
+			return $decoded;
+		}
+
+		$error_message = function_exists('json_last_error_msg') ? json_last_error_msg() : 'JSON invalido.';
+
+		if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+			$decoded = json_decode($contents, true, 512, JSON_INVALID_UTF8_SUBSTITUTE);
+
+			if (is_array($decoded)) {
+				return $decoded;
+			}
+
+			$error_message = function_exists('json_last_error_msg') ? json_last_error_msg() : $error_message;
+		}
+
+		$sanitized = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $contents);
+
+		if (is_string($sanitized) && $sanitized !== $contents) {
+			$decoded = json_decode($sanitized, true);
+
+			if (is_array($decoded)) {
+				return $decoded;
+			}
+
+			$error_message = function_exists('json_last_error_msg') ? json_last_error_msg() : $error_message;
+		}
+
+		self::$json_read_error_cache[ $path ] = $error_message;
+
+		return null;
+	}
+
+	protected static function get_json_read_error($path)
+	{
+		return isset(self::$json_read_error_cache[ $path ]) ? self::$json_read_error_cache[ $path ] : '';
 	}
 
 	protected static function write_json_file($path, $payload)
