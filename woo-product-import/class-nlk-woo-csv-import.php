@@ -592,6 +592,7 @@ class NLK_Woo_CSV_Import
 
 		$chunk = self::read_csv_chunk($file['path'], $position, $batch_size);
 		$chunk['rows'] = self::supplement_rows_with_fallback_data($chunk['rows'], $file['basename']);
+		$chunk['rows'] = self::merge_rows_with_default_fallback_data($chunk['rows']);
 		$total = self::count_total_rows($file['path']);
 
 		if (empty($chunk['rows'])) {
@@ -636,6 +637,13 @@ class NLK_Woo_CSV_Import
 
 			if (! empty($parent_results['messages'])) {
 				$messages = array_merge($messages, $parent_results['messages']);
+			}
+
+			$taxonomy_results = self::sync_taxonomies_from_rows($parents_and_simples);
+			$stats['swatch_terms_updated'] += $taxonomy_results['updated_terms'];
+
+			if (! empty($taxonomy_results['messages'])) {
+				$messages = array_merge($messages, $taxonomy_results['messages']);
 			}
 
 			$swatch_results = self::sync_swatches_from_rows($parents_and_simples);
@@ -1173,6 +1181,9 @@ class NLK_Woo_CSV_Import
 			}
 		}
 
+		$parents_and_simples = self::merge_rows_with_default_fallback_data($parents_and_simples);
+		$variations          = self::merge_rows_with_default_fallback_data($variations);
+
 		$stats    = self::empty_import_stats();
 		$messages = array();
 
@@ -1183,6 +1194,10 @@ class NLK_Woo_CSV_Import
 
 			$stats = self::merge_import_stats($stats, $parent_results['stats']);
 			$messages = array_merge($messages, $prepared_parents['messages'], $parent_results['messages']);
+
+			$taxonomy_results = self::sync_taxonomies_from_rows($parents_and_simples);
+			$stats['swatch_terms_updated'] += $taxonomy_results['updated_terms'];
+			$messages = array_merge($messages, $taxonomy_results['messages']);
 
 			$swatch_results = self::sync_swatches_from_rows($parents_and_simples);
 			$stats['swatch_terms_updated'] += $swatch_results['updated_terms'];
@@ -1715,6 +1730,9 @@ class NLK_Woo_CSV_Import
 				'name'              => trim((string) self::row_value($row, 'Title')),
 				'description'       => (string) self::row_value($row, 'Content'),
 				'short_description' => (string) self::row_value($row, 'Short Description'),
+				'categories'        => (string) self::row_value($row, 'Categorías del producto'),
+				'tags'              => (string) self::row_value($row, 'Product Tags'),
+				'brands'            => (string) self::row_value($row, 'Marcas'),
 				'raw_row'           => $row,
 			);
 
@@ -1777,7 +1795,47 @@ class NLK_Woo_CSV_Import
 			self::set_row_value($row, 'Descripción corta', $fallback_record['short_description']);
 		}
 
+		if ('' === trim((string) self::row_value($row, 'Categorías')) && ! empty($fallback_record['categories'])) {
+			self::set_row_value($row, 'Categorías', $fallback_record['categories']);
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Etiquetas')) && ! empty($fallback_record['tags'])) {
+			self::set_row_value($row, 'Etiquetas', $fallback_record['tags']);
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Marcas')) && ! empty($fallback_record['brands'])) {
+			self::set_row_value($row, 'Marcas', $fallback_record['brands']);
+		}
+
 		return $row;
+	}
+
+	protected static function merge_rows_with_default_fallback_data($rows)
+	{
+		if (empty($rows) || ! is_array($rows)) {
+			return $rows;
+		}
+
+		$fallback_file = self::resolve_optional_file('export-1-woo.csv');
+
+		if (! $fallback_file) {
+			return $rows;
+		}
+
+		$fallback_lookup = self::get_fallback_lookup_from_file($fallback_file);
+
+		if (empty($fallback_lookup)) {
+			return $rows;
+		}
+
+		foreach ($rows as $index => $row) {
+			$rows[ $index ] = self::merge_row_with_fallback_record(
+				$row,
+				self::find_fallback_record_for_row($row, $fallback_lookup)
+			);
+		}
+
+		return $rows;
 	}
 
 	protected static function find_source_parent_row($file, $reference)
@@ -2123,6 +2181,7 @@ class NLK_Woo_CSV_Import
 		}
 
 		$parent_rows = self::supplement_rows_with_fallback_data(array($parent_row), $file['basename']);
+		$parent_rows = self::merge_rows_with_default_fallback_data($parent_rows);
 		$parent_row  = $parent_rows[0];
 
 		$prepared = self::prepare_rows_for_import($headers, array($parent_row), false, $update_existing, $file['basename']);
@@ -2130,10 +2189,13 @@ class NLK_Woo_CSV_Import
 
 		self::sync_source_keys_for_rows(array($parent_row));
 
+		$taxonomy_results                   = self::sync_taxonomies_from_rows(array($parent_row));
+		$results['stats']['swatch_terms_updated'] += $taxonomy_results['updated_terms'];
+
 		$swatch_results                     = self::sync_swatches_from_rows(array($parent_row));
 		$results['stats']['swatch_terms_updated'] += $swatch_results['updated_terms'];
 
-		$messages = array_merge($prepared['messages'], $results['messages'], $swatch_results['messages']);
+		$messages = array_merge($prepared['messages'], $results['messages'], $taxonomy_results['messages'], $swatch_results['messages']);
 
 		if (self::find_local_product_id_by_reference($reference)) {
 			$messages[] = sprintf(
@@ -2494,8 +2556,8 @@ class NLK_Woo_CSV_Import
 			'nota de compra' => 'purchase_note',
 			'precio rebajado' => 'sale_price',
 			'precio normal' => 'regular_price',
-			'categorias' => 'category_ids',
-			'etiquetas' => 'tag_ids',
+			'categorias' => 'categories',
+			'etiquetas' => 'tags',
 			'clase de envio' => 'shipping_class_id',
 			'imagenes' => 'images',
 			'limite de descargas' => 'download_limit',
@@ -2542,8 +2604,8 @@ class NLK_Woo_CSV_Import
 			self::normalize_string('Nota de compra') => 'purchase_note',
 			self::normalize_string('Precio rebajado') => 'sale_price',
 			self::normalize_string('Precio normal') => 'regular_price',
-			self::normalize_string('Categorías') => 'category_ids',
-			self::normalize_string('Etiquetas') => 'tag_ids',
+			self::normalize_string('Categorías') => 'categories',
+			self::normalize_string('Etiquetas') => 'tags',
 			self::normalize_string('Clase de envío') => 'shipping_class_id',
 			self::normalize_string('Imágenes') => 'images',
 			self::normalize_string('Límite de descargas') => 'download_limit',
@@ -2654,6 +2716,203 @@ class NLK_Woo_CSV_Import
 			'updated_terms' => $updated_terms,
 			'messages'      => $messages,
 		);
+	}
+
+	protected static function sync_taxonomies_from_rows($rows)
+	{
+		$updated_terms = 0;
+		$messages      = array();
+		$brand_taxonomy = self::resolve_taxonomy_candidate(
+			apply_filters('nlk_woo_import_brand_taxonomies', array('product_brand', 'brand', 'marcas', 'marca', 'yith_product_brand', 'pwb-brand'))
+		);
+		$showroom_taxonomy = self::resolve_taxonomy_candidate(
+			apply_filters('nlk_woo_import_showroom_taxonomies', array('showroom', 'pa_showroom'))
+		);
+		$collection_taxonomy = self::resolve_taxonomy_candidate(
+			apply_filters('nlk_woo_import_collection_taxonomies', array('coleccion', 'pa_coleccion'))
+		);
+
+		foreach ($rows as $row) {
+			$product_id = self::resolve_existing_target_id($row);
+
+			if (! $product_id || self::is_importing_placeholder_product($product_id)) {
+				continue;
+			}
+
+			$category_value = self::first_non_empty_row_value($row, array('Categorías', 'Categorías del producto'));
+			$tag_value      = self::first_non_empty_row_value($row, array('Etiquetas', 'Product Tags'));
+			$brand_value    = self::first_non_empty_row_value($row, array('Marcas'));
+			$showroom_value = self::first_non_empty_row_value($row, array('Showroom', 'showroom', 'Showrooms'));
+			$collection_value = self::first_non_empty_row_value($row, array('Colección', 'Coleccion', 'coleccion'));
+
+			if (taxonomy_exists('product_cat') && '' !== $category_value) {
+				$category_ids = self::ensure_hierarchical_term_paths(self::parse_hierarchical_term_paths($category_value), 'product_cat');
+				if (! empty($category_ids)) {
+					wp_set_object_terms($product_id, $category_ids, 'product_cat', false);
+					$updated_terms += count($category_ids);
+				}
+			}
+
+			if (taxonomy_exists('product_tag') && '' !== $tag_value) {
+				$tag_ids = self::ensure_flat_terms(self::parse_flat_terms($tag_value), 'product_tag');
+				if (! empty($tag_ids)) {
+					wp_set_object_terms($product_id, $tag_ids, 'product_tag', false);
+					$updated_terms += count($tag_ids);
+				}
+			}
+
+			if ($brand_taxonomy && '' !== $brand_value) {
+				$brand_ids = self::ensure_flat_terms(self::parse_flat_terms($brand_value), $brand_taxonomy);
+				if (! empty($brand_ids)) {
+					wp_set_object_terms($product_id, $brand_ids, $brand_taxonomy, false);
+					$updated_terms += count($brand_ids);
+				}
+			}
+
+			if ($showroom_taxonomy && '' !== $showroom_value) {
+				$showroom_ids = self::ensure_flat_terms(self::parse_flat_terms($showroom_value), $showroom_taxonomy);
+				if (! empty($showroom_ids)) {
+					wp_set_object_terms($product_id, $showroom_ids, $showroom_taxonomy, false);
+					$updated_terms += count($showroom_ids);
+				}
+			}
+
+			if ($collection_taxonomy && '' !== $collection_value) {
+				$collection_ids = self::ensure_flat_terms(self::parse_flat_terms($collection_value), $collection_taxonomy);
+				if (! empty($collection_ids)) {
+					wp_set_object_terms($product_id, $collection_ids, $collection_taxonomy, false);
+					$updated_terms += count($collection_ids);
+				}
+			}
+		}
+
+		return array(
+			'updated_terms' => $updated_terms,
+			'messages'      => array_values(array_unique(array_filter($messages))),
+		);
+	}
+
+	protected static function first_non_empty_row_value($row, $keys)
+	{
+		foreach ($keys as $key) {
+			$value = trim((string) self::row_value($row, $key));
+			if ('' !== $value) {
+				return $value;
+			}
+		}
+
+		return '';
+	}
+
+	protected static function resolve_taxonomy_candidate($candidates)
+	{
+		foreach ((array) $candidates as $candidate) {
+			if ($candidate && taxonomy_exists($candidate)) {
+				return $candidate;
+			}
+		}
+
+		return '';
+	}
+
+	protected static function parse_flat_terms($value)
+	{
+		return array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						'trim',
+						explode(',', (string) $value)
+					)
+				)
+			)
+		);
+	}
+
+	protected static function parse_hierarchical_term_paths($value)
+	{
+		$paths = array();
+
+		foreach (self::parse_flat_terms($value) as $term_path) {
+			$segments = array_values(array_filter(array_map('trim', preg_split('/\s*>\s*/', $term_path))));
+
+			if (! empty($segments)) {
+				$paths[] = $segments;
+			}
+		}
+
+		return $paths;
+	}
+
+	protected static function ensure_hierarchical_term_paths($paths, $taxonomy)
+	{
+		$term_ids = array();
+
+		foreach ((array) $paths as $segments) {
+			$parent_id = 0;
+
+			foreach ((array) $segments as $segment) {
+				$term = term_exists($segment, $taxonomy, $parent_id);
+
+				if (! $term) {
+					$term = wp_insert_term(
+						$segment,
+						$taxonomy,
+						array('parent' => $parent_id)
+					);
+				}
+
+				$term_id = self::extract_term_id($term);
+
+				if (is_wp_error($term) || $term_id <= 0) {
+					continue 2;
+				}
+
+				$parent_id = $term_id;
+			}
+
+			if ($parent_id > 0) {
+				$term_ids[] = $parent_id;
+			}
+		}
+
+		return array_values(array_unique(array_filter($term_ids)));
+	}
+
+	protected static function ensure_flat_terms($terms, $taxonomy)
+	{
+		$term_ids = array();
+
+		foreach ((array) $terms as $term_name) {
+			$term = term_exists($term_name, $taxonomy);
+
+			if (! $term) {
+				$term = wp_insert_term($term_name, $taxonomy);
+			}
+
+			$term_id = self::extract_term_id($term);
+
+			if (is_wp_error($term) || $term_id <= 0) {
+				continue;
+			}
+
+			$term_ids[] = $term_id;
+		}
+
+		return array_values(array_unique(array_filter($term_ids)));
+	}
+
+	protected static function extract_term_id($term)
+	{
+		if (is_array($term) && ! empty($term['term_id'])) {
+			return intval($term['term_id']);
+		}
+
+		if (is_numeric($term)) {
+			return intval($term);
+		}
+
+		return 0;
 	}
 
 	protected static function resolve_swatch_taxonomy($attribute_name, $attribute_data, $taxonomy_map)
