@@ -386,6 +386,7 @@ class NLK_Woo_CSV_Import
 		if (! empty($parents_and_simples)) {
 			$prepared_parents = self::prepare_rows_for_import($chunk['headers'], $parents_and_simples, false, $update_existing, $file['basename']);
 			$parent_results   = self::run_importer_for_rows($chunk['headers'], $prepared_parents['rows'], $update_existing);
+			self::sync_source_ids_for_rows($parents_and_simples);
 			self::clear_source_cache_for_rows($parents_and_simples);
 
 			$stats = self::merge_import_stats($stats, $parent_results['stats']);
@@ -1136,6 +1137,48 @@ class NLK_Woo_CSV_Import
 		}
 
 		return $map;
+	}
+
+	/**
+	 * After importing a batch of parent rows, ensure every product has
+	 * SOURCE_META_KEY written and cached. We look up by SKU (reliable even
+	 * when WC skipped the row because the product already existed) and fall
+	 * back to the existing meta query. This guarantees variations processed
+	 * later in the same or subsequent batches can always resolve their parent.
+	 */
+	protected static function sync_source_ids_for_rows($rows)
+	{
+		foreach ($rows as $row) {
+			$source_id = trim((string) self::row_value($row, 'ID'));
+
+			if ('' === $source_id) {
+				continue;
+			}
+
+			// Already cached from this request — nothing to do.
+			if (isset(self::$source_id_cache[ $source_id ])) {
+				continue;
+			}
+
+			$product_id = 0;
+
+			// Prefer SKU lookup: works whether the product was just created
+			// or was skipped by WC because it already existed.
+			$sku = trim((string) self::row_value($row, 'SKU'));
+			if ('' !== $sku) {
+				$product_id = (int) wc_get_product_id_by_sku($sku);
+			}
+
+			// Fall back to the meta query (handles products imported without a SKU).
+			if (! $product_id) {
+				$product_id = self::find_local_product_id_by_source($source_id);
+			}
+
+			if ($product_id > 0) {
+				update_post_meta($product_id, self::SOURCE_META_KEY, $source_id);
+				self::$source_id_cache[ $source_id ] = $product_id;
+			}
+		}
 	}
 
 	protected static function find_local_product_id_by_source($source_id)
