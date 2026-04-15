@@ -244,7 +244,7 @@ class NLK_Woo_CSV_Import
 	 * : Do not update matches. Only create missing products and variations.
 	 *
 	 * [--force-sync]
-	 * : Delete matched local products/variations and recreate them from the JSON.
+	 * : Reconcile matched local products/variations in place before importing.
 	 *
 	 * @when after_wp_load
 	 */
@@ -295,21 +295,26 @@ class NLK_Woo_CSV_Import
 			$effective_update_existing = $update_existing;
 
 			if ($force_sync) {
-				$purge = self::force_sync_cleanup_json_chunk($chunk);
-				$effective_update_existing = false;
+				$reconcile = self::force_sync_cleanup_json_chunk($chunk);
+				$effective_update_existing = true;
 
-				if ($purge['deleted_products'] > 0 || $purge['deleted_variations'] > 0) {
+				if (
+					$reconcile['matched_products'] > 0 ||
+					$reconcile['matched_variations'] > 0 ||
+					$reconcile['repaired_parent_links'] > 0
+				) {
 					WP_CLI::log(
 						sprintf(
-							'Chunk %d purge | deleted_products=%d | deleted_variations=%d',
+							'Chunk %d reconcile | matched_products=%d | matched_variations=%d | repaired_parent_links=%d',
 							$current_index,
-							$purge['deleted_products'],
-							$purge['deleted_variations']
+							$reconcile['matched_products'],
+							$reconcile['matched_variations'],
+							$reconcile['repaired_parent_links']
 						)
 					);
 				}
 
-				foreach ($purge['messages'] as $message) {
+				foreach ($reconcile['messages'] as $message) {
 					WP_CLI::warning($message);
 				}
 			}
@@ -1268,77 +1273,92 @@ class NLK_Woo_CSV_Import
 	protected static function force_sync_cleanup_json_chunk($chunk)
 	{
 		$products = ! empty($chunk['products']) && is_array($chunk['products']) ? $chunk['products'] : array();
-		$ids      = array();
+		$messages = array();
+		$matched_products = 0;
+		$matched_variations = 0;
+		$repaired_parent_links = 0;
 
 		foreach ($products as $product) {
-			$ids = array_merge($ids, self::collect_local_ids_for_json_product($product));
-		}
+			if (! empty($product['parent']) && is_array($product['parent'])) {
+				$parent_result = self::reconcile_json_row_record($product['parent'], false);
+				$matched_products += $parent_result['matched'] ? 1 : 0;
+				$messages = array_merge($messages, $parent_result['messages']);
+			}
 
-		$ids = array_values(array_unique(array_filter(array_map('absint', $ids))));
-
-		if (empty($ids)) {
-			return array(
-				'deleted_products'   => 0,
-				'deleted_variations' => 0,
-				'messages'           => array(),
-			);
-		}
-
-		$variation_ids = array();
-		$product_ids   = array();
-
-		foreach ($ids as $id) {
-			if ('product_variation' === get_post_type($id)) {
-				$variation_ids[] = $id;
+			if (empty($product['variations']) || ! is_array($product['variations'])) {
 				continue;
 			}
 
-			$product_ids[] = $id;
-
-			$children = get_posts(
-				array(
-					'post_type'      => 'product_variation',
-					'post_parent'    => $id,
-					'post_status'    => 'any',
-					'fields'         => 'ids',
-					'posts_per_page' => -1,
-				)
-			);
-
-			foreach ($children as $child_id) {
-				$variation_ids[] = absint($child_id);
+			foreach ($product['variations'] as $variation) {
+				$variation_result = self::reconcile_json_row_record($variation, true);
+				$matched_variations += $variation_result['matched'] ? 1 : 0;
+				$repaired_parent_links += intval($variation_result['repaired_parent_link']);
+				$messages = array_merge($messages, $variation_result['messages']);
 			}
-		}
-
-		$variation_ids = array_values(array_unique(array_filter($variation_ids)));
-		$product_ids   = array_values(array_unique(array_filter($product_ids)));
-		$messages      = array();
-		$deleted_variations = 0;
-		$deleted_products   = 0;
-
-		foreach ($variation_ids as $id) {
-			if (wp_delete_post($id, true)) {
-				$deleted_variations++;
-			}
-		}
-
-		foreach ($product_ids as $id) {
-			if (wp_delete_post($id, true)) {
-				$deleted_products++;
-			}
-		}
-
-		self::$source_id_cache = array();
-
-		if (0 === $deleted_products && 0 === $deleted_variations) {
-			$messages[] = 'Force sync activo, pero no se pudo borrar ningun producto coincidente.';
 		}
 
 		return array(
-			'deleted_products'   => $deleted_products,
-			'deleted_variations' => $deleted_variations,
-			'messages'           => $messages,
+			'matched_products'      => $matched_products,
+			'matched_variations'    => $matched_variations,
+			'repaired_parent_links' => $repaired_parent_links,
+			'messages'              => array_values(array_unique(array_filter($messages))),
 		);
+	}
+
+	protected static function reconcile_json_row_record($row_record, $is_variation)
+	{
+		$result = array(
+			'matched'              => false,
+			'repaired_parent_link' => 0,
+			'messages'             => array(),
+		);
+
+		if (! is_array($row_record) || empty($row_record['merged_row']) || ! is_array($row_record['merged_row'])) {
+			return $result;
+		}
+
+		$row        = $row_record['merged_row'];
+		$product_id = self::resolve_existing_target_id($row);
+
+		if (! $product_id || self::is_importing_placeholder_product($product_id)) {
+			return $result;
+		}
+
+		$source_id     = trim((string) self::row_value($row, 'ID'));
+		$source_sku    = trim((string) self::row_value($row, 'SKU'));
+		$source_parent = trim((string) self::row_value($row, 'Superior'));
+
+		if ('' !== $source_id) {
+			update_post_meta($product_id, self::SOURCE_META_KEY, $source_id);
+			self::$source_id_cache[ $source_id ] = $product_id;
+		}
+
+		if ('' !== $source_sku) {
+			update_post_meta($product_id, self::SOURCE_SKU_META_KEY, $source_sku);
+			self::$source_id_cache[ $source_sku ] = $product_id;
+		}
+
+		if ('' !== $source_parent) {
+			update_post_meta($product_id, self::SOURCE_PARENT_META_KEY, $source_parent);
+		}
+
+		if ($is_variation && '' !== $source_parent) {
+			$local_parent_id = self::find_local_product_id_by_reference($source_parent);
+
+			if ($local_parent_id > 0 && intval(wp_get_post_parent_id($product_id)) !== $local_parent_id) {
+				wp_update_post(
+					array(
+						'ID'          => $product_id,
+						'post_parent' => $local_parent_id,
+					)
+				);
+				$result['repaired_parent_link'] = 1;
+			}
+		}
+
+		$result['matched'] = true;
+
+		return $result;
 	}
 
 	protected static function collect_local_ids_for_json_product($product)
@@ -2788,6 +2808,10 @@ class NLK_Woo_CSV_Import
 
 		if (! $product_id) {
 			$product_id = self::find_local_product_id_by_meta(self::SOURCE_SKU_META_KEY, $normalized_reference);
+		}
+
+		if (! $product_id) {
+			$product_id = self::find_local_product_id_by_meta('_original_id', $normalized_reference);
 		}
 
 		if (! $product_id) {
