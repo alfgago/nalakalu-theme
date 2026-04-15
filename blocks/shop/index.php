@@ -218,7 +218,7 @@ $hero_banner_fijo = function_exists('get_field') ? get_field('hero_banner_fijo')
 $fixed_banner_url = nlk_shop__normalize_image_url($hero_banner_fijo);
 
 if (!$fixed_banner_url) {
-  $fixed_banner_url = 'https://nalakalu.stag.host/wp-content/uploads/2026/03/0I5A7909-1.jpg';
+  $fixed_banner_url = 'https://nalakalu.stag.host/wp-content/uploads/2026/04/pr.jpg';
 }
 
 // Hero siempre fijo

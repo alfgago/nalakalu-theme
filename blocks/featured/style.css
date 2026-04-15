@@ -11,7 +11,7 @@
 .products-column2{display:flex;flex-direction:row;align-items:center;justify-content:space-between; width:60%;gap:12rem; font-weight:300;}
 .products-column2 .font-body-medium-light{
   transition:.3s all;max-width: 30rem; color:#555555; margin:0;
-  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; text-align:justify;
 }
 .product-image{width:10rem;height:10rem; object-fit:cover;border-radius:10px; transition:.3s all;}
 .featured-section .product-row-link:last-of-type .row-products{border-bottom: 0;}

@@ -227,7 +227,11 @@
 @media (min-width: 769px) {
   .toggle-immersive .accordion-item,
   .toggle-immersive .accordion-header {
-    pointer-events: none;
+    pointer-events: auto;
+  }
+
+  .toggle-immersive .accordion-item {
+    cursor: pointer;
   }
 }
 

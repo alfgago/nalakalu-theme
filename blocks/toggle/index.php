@@ -182,18 +182,10 @@ $has_items = !empty($items);
     };
   }
 
-  var mainSection = root.querySelector('.main-section');
   var items = Array.prototype.slice.call(root.querySelectorAll('.accordion-item'));
-  var images = Array.prototype.slice.call(root.querySelectorAll('.background-image'));
-  var mqMobile = window.matchMedia('(max-width: 768px)');
   var currentIndex = -1;
-  var ticking = false;
 
-  if (!mainSection || !items.length) return;
-
-var STEP_PER_ITEM = 1.9;
-var ENTER_BUFFER  = 0.30;
-var EXIT_BUFFER   = 0.45;
+  if (!items.length) return;
 
   function setActiveByIndex(index) {
     index = Math.max(0, Math.min(items.length - 1, index));
@@ -220,95 +212,33 @@ var EXIT_BUFFER   = 0.45;
     currentIndex = index;
   }
 
-  function enableDesktopMode() {
-    root.classList.add('ti-scroll-mode');
-
-    var vh = window.innerHeight || document.documentElement.clientHeight;
-
-    /* Altura total del storytelling */
-    var totalHeight = Math.round(
-      vh +                           /* primer viewport visible */
-      (items.length - 1) * vh * STEP_PER_ITEM +
-      vh * ENTER_BUFFER +
-      vh * EXIT_BUFFER
-    );
-
-    root.style.minHeight = totalHeight + 'px';
-
-    updateFromScroll();
-  }
-
-  function enableMobileMode() {
-    root.classList.remove('ti-scroll-mode');
-    root.style.minHeight = '';
-    if (currentIndex === -1) setActiveByIndex(0);
-  }
-
-  function updateMode() {
-    if (mqMobile.matches) {
-      enableMobileMode();
-    } else {
-      enableDesktopMode();
-    }
-  }
-
-  function getDesktopIndex() {
-    var rect = root.getBoundingClientRect();
-    var vh = window.innerHeight || document.documentElement.clientHeight;
-
-    /* todavía no entró */
-    if (rect.top >= vh * ENTER_BUFFER) return 0;
-
-    var scrollInside = Math.max(0, -rect.top + (vh * ENTER_BUFFER));
-    var segment = vh * STEP_PER_ITEM;
-
-    var index = Math.floor(scrollInside / segment);
-    index = Math.max(0, Math.min(items.length - 1, index));
-
-    return index;
-  }
-
-  function updateFromScroll() {
-    if (mqMobile.matches) return;
-    setActiveByIndex(getDesktopIndex());
-  }
-
-  function onScroll() {
-    if (mqMobile.matches) return;
-    if (ticking) return;
-
-    ticking = true;
-    window.requestAnimationFrame(function () {
-      updateFromScroll();
-      ticking = false;
-    });
-  }
-
-  function bindMobileClicks() {
+  function bindClicks() {
     items.forEach(function (item, index) {
       var header = item.querySelector('.accordion-header') || item;
 
+      header.setAttribute('role', 'button');
+      header.setAttribute('tabindex', '0');
+      item.setAttribute('aria-expanded', index === 0 ? 'true' : 'false');
+
       header.addEventListener('click', function () {
-        if (!mqMobile.matches) return;
         setActiveByIndex(index);
+      });
+
+      header.addEventListener('keydown', function (e) {
+        var key = e.key || e.code;
+        if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+          e.preventDefault();
+          setActiveByIndex(index);
+        }
       });
     });
   }
 
-  bindMobileClicks();
+  root.classList.remove('ti-scroll-mode');
+  root.style.minHeight = '';
+
+  bindClicks();
   setActiveByIndex(0);
-  updateMode();
-
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', function () {
-    updateMode();
-  });
-
-  if (typeof mqMobile.addEventListener === 'function') {
-    mqMobile.addEventListener('change', updateMode);
-  } else if (typeof mqMobile.addListener === 'function') {
-    mqMobile.addListener(updateMode);
-  }
 })();
 </script>
 </section>

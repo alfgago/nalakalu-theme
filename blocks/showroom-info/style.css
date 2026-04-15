@@ -31,6 +31,7 @@
   text-align: right;
   margin:1rem 0rem;
   font-size:24px;
+  line-height: 30px;
 }
 
 
@@ -104,15 +105,16 @@
 
 .showroom_info_block .info_sh_footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   clip-path: inset(0 100% 0 0);
   animation: info_sh_revealLeft .8s cubic-bezier(0.77,0,0.175,1) .8s forwards;
+  gap:5rem;
 }
 
 
 .info_sh_footer .font-body-medium-light{
-  margin:0rem 0rem 0rem -2rem;
+  margin:1rem 0rem 0rem 0rem;
 }
 
 

@@ -1,6 +1,4 @@
-/* =========================
-   COLLECTION SELECTOR (scoped)
-   ========================= */
+
 
 .collection-selector-block .cs_section {
   display: flex;
@@ -91,6 +89,11 @@
  .hidden_desktop{
     display:none;
   }
+  
+.cs_glass .font-body-small{
+  text-align: justify;
+}
+
 
 /* =========================
    Responsive

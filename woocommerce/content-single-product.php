@@ -908,7 +908,7 @@ if ( $product->is_type('variable') ) {
   if (!root) return;
 
   var ui = root.querySelector('[data-role="variations"]');
-  if (!ui) return; // no es variable
+  if (!ui) return;
 
   var form = root.querySelector('[data-role="var-form"]');
   if (!form) return;
@@ -919,90 +919,217 @@ if ( $product->is_type('variable') ) {
   var varIdEl  = form.querySelector('[data-role="variation-id"]');
   var qtyInput = form.querySelector('input.qty');
   var hiddenAttrInputs = Array.from(form.querySelectorAll('[data-role="attr-hidden"]'));
+  var allRadioInputs   = Array.from(ui.querySelectorAll('input[type="radio"]'));
 
   var variations = [];
-  try { variations = JSON.parse(ui.getAttribute('data-variations') || '[]'); } catch(e){ variations = []; }
+  try {
+    variations = JSON.parse(ui.getAttribute('data-variations') || '[]');
+  } catch(e) {
+    variations = [];
+  }
+
+  if (!variations.length) return;
 
   function setMsg(html){
     if (!msgEl) return;
-    // si tu msg era textContent, ahora permitimos availability_html
     msgEl.innerHTML = html || '';
   }
 
-  function getRadioValue(name){
-    var radios = ui.querySelectorAll('input[type="radio"][name="'+CSS.escape(name)+'"]');
-    for (var i=0; i<radios.length; i++){
+  function radiosByName(name){
+    return allRadioInputs.filter(function(r){ return r.name === name; });
+  }
+
+  function getCheckedRadioValue(name){
+    var radios = radiosByName(name);
+    for (var i = 0; i < radios.length; i++) {
       if (radios[i].checked) return radios[i].value || '';
     }
     return '';
   }
 
-  function getSelectValue(name){
-    var sel = ui.querySelector('select[name="'+CSS.escape(name)+'"]');
-    return sel ? (sel.value || '') : '';
-  }
-
   function getSelected(){
     var out = {};
     hiddenAttrInputs.forEach(function(h){
-      var key = h.name; // attribute_pa_xxx
-      var val = getRadioValue(key);
-      if (!val) val = getSelectValue(key);
-
-      // stand by: si no hay UI para ese atributo todavía, respetamos hidden
+      var val = getCheckedRadioValue(h.name);
       if (!val) val = h.value || '';
-
-      out[key] = val;
+      out[h.name] = val;
     });
     return out;
-  }
-
-  function allChosen(sel){
-    for (var k in sel) {
-      if (!sel[k]) return false;
-    }
-    return true;
-  }
-
-  function matchVariation(selected){
-    // Match robusto:
-    // - Compara solo keys que existen tanto en selected como en v.attributes
-    // - Ignora attributes vacíos en la variación (Woo a veces manda '')
-    for (var i=0; i<variations.length; i++){
-      var v = variations[i];
-      var attrs = v && v.attributes ? v.attributes : {};
-      var ok = true;
-
-      // 1) Lo seleccionado tiene que coincidir con lo que la variación define (si define ese key)
-      for (var key in selected){
-        if (!selected.hasOwnProperty(key)) continue;
-
-        if (typeof attrs[key] === 'undefined') continue; // esta variación no define ese attr -> ignoramos
-
-        var vv = String(attrs[key] || '');
-        if (vv === '') continue; // Woo: si viene vacío, no lo usamos para descartar
-
-        if (vv !== String(selected[key] || '')) { ok = false; break; }
-      }
-
-      // 2) Y lo que la variación define (no vacío) debe estar igual a selected
-      if (ok){
-        for (var k in attrs){
-          if (!attrs.hasOwnProperty(k)) continue;
-          var need = String(attrs[k] || '');
-          if (need === '') continue;
-          if (!selected[k] || String(selected[k]) !== need) { ok = false; break; }
-        }
-      }
-
-      if (ok) return v;
-    }
-    return null;
   }
 
   function setHiddenAttributes(selected){
     hiddenAttrInputs.forEach(function(inp){
       inp.value = selected[inp.name] || '';
+    });
+  }
+
+  function allChosen(selected){
+    for (var k in selected) {
+      if (!selected[k]) return false;
+    }
+    return true;
+  }
+
+  function partialMatchVariation(variation, selected){
+    if (!variation || !variation.attributes) return false;
+
+    var attrs = variation.attributes;
+
+    for (var key in selected) {
+      if (!selected.hasOwnProperty(key)) continue;
+
+      var wanted = String(selected[key] || '');
+      if (!wanted) continue;
+
+      var current = (typeof attrs[key] !== 'undefined') ? String(attrs[key] || '') : '';
+
+      // si la variación no define ese attr o viene vacío, no bloquea
+      if (current === '') continue;
+
+      if (current !== wanted) return false;
+    }
+
+    return true;
+  }
+
+  function exactMatchVariation(selected){
+    for (var i = 0; i < variations.length; i++) {
+      var v = variations[i];
+      if (!v || !v.attributes) continue;
+
+      var attrs = v.attributes;
+      var ok = true;
+
+      for (var key in selected){
+        if (!selected.hasOwnProperty(key)) continue;
+
+        var want = String(selected[key] || '');
+        var got  = (typeof attrs[key] !== 'undefined') ? String(attrs[key] || '') : '';
+
+        if (got === '') continue;
+        if (got !== want) {
+          ok = false;
+          break;
+        }
+      }
+
+      if (!ok) continue;
+
+      for (var a in attrs){
+        if (!attrs.hasOwnProperty(a)) continue;
+
+        var need = String(attrs[a] || '');
+        if (!need) continue;
+
+        if (!selected[a] || String(selected[a]) !== need) {
+          ok = false;
+          break;
+        }
+      }
+
+      if (ok) return v;
+    }
+
+    return null;
+  }
+
+  function findFirstCompatibleVariation(selected){
+    for (var i = 0; i < variations.length; i++) {
+      if (partialMatchVariation(variations[i], selected)) {
+        return variations[i];
+      }
+    }
+    return null;
+  }
+
+  function isOptionCompatible(attrName, optionValue, selected){
+    var candidate = Object.assign({}, selected);
+    candidate[attrName] = optionValue;
+
+    for (var i = 0; i < variations.length; i++) {
+      if (partialMatchVariation(variations[i], candidate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function toggleOptionState(input, enabled){
+    input.disabled = !enabled;
+
+    var label = input.closest('.info-product-radio-item, .info-product-swatch');
+    if (label) {
+      label.classList.toggle('is-disabled', !enabled);
+      label.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    }
+  }
+
+  function refreshOptionStates(selected){
+    hiddenAttrInputs.forEach(function(h){
+      var attrName = h.name;
+      var radios = radiosByName(attrName);
+
+      radios.forEach(function(radio){
+        var enabled = isOptionCompatible(attrName, radio.value, selected);
+        toggleOptionState(radio, enabled);
+      });
+    });
+  }
+
+  function ensureValidSelections(){
+    var guard = 0;
+    var changed = false;
+
+    do {
+      changed = false;
+
+      var selected = getSelected();
+      refreshOptionStates(selected);
+
+      hiddenAttrInputs.forEach(function(h){
+        var attrName = h.name;
+        var radios = radiosByName(attrName);
+        if (!radios.length) return;
+
+        var checkedValid = radios.some(function(r){ return r.checked && !r.disabled; });
+
+        if (!checkedValid) {
+          var firstEnabled = radios.find(function(r){ return !r.disabled; });
+          if (firstEnabled) {
+            firstEnabled.checked = true;
+            changed = true;
+          }
+        }
+      });
+
+      guard++;
+    } while (changed && guard < 10);
+
+    var finalSelected = getSelected();
+    refreshOptionStates(finalSelected);
+    return finalSelected;
+  }
+
+  function applyVariationToInputs(variation){
+    if (!variation || !variation.attributes) return;
+
+    var attrs = variation.attributes;
+
+    hiddenAttrInputs.forEach(function(h){
+      var attrName = h.name;
+      var value = (typeof attrs[attrName] !== 'undefined') ? String(attrs[attrName] || '') : '';
+
+      if (!value) return;
+
+      var radios = radiosByName(attrName);
+      if (!radios.length) {
+        h.value = value;
+        return;
+      }
+
+      radios.forEach(function(r){
+        r.checked = (String(r.value) === value);
+      });
     });
   }
 
@@ -1013,74 +1140,88 @@ if ( $product->is_type('variable') ) {
     var max = '';
 
     if (v && typeof v.min_qty !== 'undefined' && v.min_qty !== null) {
-      var m1 = parseInt(v.min_qty,10);
+      var m1 = parseInt(v.min_qty, 10);
       if (isFinite(m1) && m1 > 0) min = m1;
     }
 
     if (v && typeof v.max_qty !== 'undefined' && v.max_qty !== null && v.max_qty !== '') {
-      var m2 = parseInt(v.max_qty,10);
+      var m2 = parseInt(v.max_qty, 10);
       if (isFinite(m2) && m2 > 0) max = String(m2);
     }
 
     qtyInput.min = String(min);
+
     if (max === '') qtyInput.removeAttribute('max');
     else qtyInput.max = max;
 
-    if (parseInt(qtyInput.value || '1',10) < min) qtyInput.value = String(min);
+    if (parseInt(qtyInput.value || '1', 10) < min) {
+      qtyInput.value = String(min);
+    }
   }
 
   function setPrice(v){
-    if (!priceEl) return;
-    if (v && v.price_html) priceEl.innerHTML = v.price_html;
+    if (!priceEl || !v || !v.price_html) return;
+    priceEl.innerHTML = v.price_html;
   }
 
   function setAvailability(v, selected){
     if (!addBtn) return;
 
-    // todavía no eligió todo -> no mostramos error “no disponible”
     if (!allChosen(selected)) {
       addBtn.disabled = true;
-      setMsg(''); // o dejalo vacío
+      setMsg('');
       return;
     }
 
-    // eligió todo pero no hay match
     if (!v) {
+      // NO mostramos más el mensaje de combinación inválida
       addBtn.disabled = true;
-      setMsg('<span class="stock out-of-stock">Esa combinación no está disponible.</span>');
+      setMsg('');
       return;
     }
 
-    // hay match pero sin stock / no comprable
     if (v.is_in_stock === false || v.is_purchasable === false) {
       addBtn.disabled = true;
       setMsg(v.availability_html || '<span class="stock out-of-stock">Sin stock para esa opción.</span>');
       return;
     }
 
-    // OK
     addBtn.disabled = false;
     setMsg(v.availability_html || '');
   }
 
   function sync(){
-    var selected = getSelected();
+    var selected = ensureValidSelections();
     setHiddenAttributes(selected);
 
-    var v = allChosen(selected) ? matchVariation(selected) : null;
+    var exact = allChosen(selected) ? exactMatchVariation(selected) : null;
 
-    if (varIdEl) varIdEl.value = (v && v.variation_id) ? String(v.variation_id) : '';
-
-    if (v) {
-      setPrice(v);
-      setQtyLimits(v);
+    // fallback defensivo:
+    // si por algún motivo la selección actual no tiene match exacto,
+    // saltamos a la primera variación compatible real
+    if (!exact) {
+      var fallback = findFirstCompatibleVariation(selected);
+      if (fallback) {
+        applyVariationToInputs(fallback);
+        selected = ensureValidSelections();
+        setHiddenAttributes(selected);
+        exact = exactMatchVariation(selected) || fallback;
+      }
     }
 
-    setAvailability(v, selected);
+    if (varIdEl) {
+      varIdEl.value = (exact && exact.variation_id) ? String(exact.variation_id) : '';
+    }
+
+    if (exact) {
+      setPrice(exact);
+      setQtyLimits(exact);
+    }
+
+    setAvailability(exact, selected);
   }
 
-  // listeners
-  Array.from(ui.querySelectorAll('input[type="radio"], select')).forEach(function(el){
+  allRadioInputs.forEach(function(el){
     el.addEventListener('change', sync);
   });
 

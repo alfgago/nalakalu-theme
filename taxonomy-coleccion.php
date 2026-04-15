@@ -318,183 +318,183 @@ if ( $coleccion_term instanceof WP_Term ) {
       })();
       </script>
       <script>
-(function () {
-  var mq = window.matchMedia("(max-width: 768px)");
+      (function () {
+        var mq = window.matchMedia("(max-width: 768px)");
 
-  function safeAddMqListener(mql, fn){
-    if (mql.addEventListener) mql.addEventListener("change", fn);
-    else if (mql.addListener) mql.addListener(fn);
-  }
+        function safeAddMqListener(mql, fn){
+          if (mql.addEventListener) mql.addEventListener("change", fn);
+          else if (mql.addListener) mql.addListener(fn);
+        }
 
-  function initMobileCarousel(block){
-    if (!block || block.__taxMobileInit) return;
+        function initMobileCarousel(block){
+          if (!block || block.__taxMobileInit) return;
 
-    var wrapper = block.querySelector(".tax_lanz_carousel-wrapper");
-    var track   = block.querySelector(".tax_lanz_carousel-container");
-    var items   = track ? track.querySelectorAll(".tax_lanz_carousel-item") : null;
-    var nav     = block.querySelector(".tax_lanz_nav-buttons");
+          var wrapper = block.querySelector(".tax_lanz_carousel-wrapper");
+          var track   = block.querySelector(".tax_lanz_carousel-container");
+          var items   = track ? track.querySelectorAll(".tax_lanz_carousel-item") : null;
+          var nav     = block.querySelector(".tax_lanz_nav-buttons");
 
-    if (!wrapper || !track || !items || !items.length || !nav) return;
+          if (!wrapper || !track || !items || !items.length || !nav) return;
 
-    block.__taxMobileInit = true;
+          block.__taxMobileInit = true;
 
-    // Guardar ubicación original del nav para restaurar en desktop
-    if (!nav.__taxStored) {
-      nav.__taxStored = true;
-      nav.__taxOrigParent = nav.parentNode;
-      nav.__taxOrigNext = nav.nextSibling;
-    }
+          // Guardar ubicación original del nav para restaurar en desktop
+          if (!nav.__taxStored) {
+            nav.__taxStored = true;
+            nav.__taxOrigParent = nav.parentNode;
+            nav.__taxOrigNext = nav.nextSibling;
+          }
 
-    function placeNavMobile(){
-      // pone las flechas debajo del carrusel
-      if (nav.parentNode !== wrapper.parentNode || nav.previousElementSibling !== wrapper) {
-        wrapper.insertAdjacentElement("afterend", nav);
-      }
-    }
+          function placeNavMobile(){
+            // pone las flechas debajo del carrusel
+            if (nav.parentNode !== wrapper.parentNode || nav.previousElementSibling !== wrapper) {
+              wrapper.insertAdjacentElement("afterend", nav);
+            }
+          }
 
-    function restoreNavDesktop(){
-      var p = nav.__taxOrigParent;
-      if (!p) return;
+          function restoreNavDesktop(){
+            var p = nav.__taxOrigParent;
+            if (!p) return;
 
-      // si sigue existiendo el nextSibling original, lo insertamos antes
-      if (nav.__taxOrigNext && nav.__taxOrigNext.parentNode === p) {
-        p.insertBefore(nav, nav.__taxOrigNext);
-      } else {
-        p.appendChild(nav);
-      }
+            // si sigue existiendo el nextSibling original, lo insertamos antes
+            if (nav.__taxOrigNext && nav.__taxOrigNext.parentNode === p) {
+              p.insertBefore(nav, nav.__taxOrigNext);
+            } else {
+              p.appendChild(nav);
+            }
 
-      // sacamos el transform inline (no pisamos lógica desktop)
-      track.style.transform = "";
-    }
+            // sacamos el transform inline (no pisamos lógica desktop)
+            track.style.transform = "";
+          }
 
-    var current = 0;
+          var current = 0;
 
-    function getSlideW(){
-      return wrapper.getBoundingClientRect().width || wrapper.clientWidth || 0;
-    }
+          function getSlideW(){
+            return wrapper.getBoundingClientRect().width || wrapper.clientWidth || 0;
+          }
 
-    function clamp(n, min, max){
-      return Math.max(min, Math.min(max, n));
-    }
+          function clamp(n, min, max){
+            return Math.max(min, Math.min(max, n));
+          }
 
-    function goTo(i){
-      i = clamp(i, 0, items.length - 1);
-      current = i;
+          function goTo(i){
+            i = clamp(i, 0, items.length - 1);
+            current = i;
 
-      var w = getSlideW();
-      track.style.transform = "translate3d(" + (-current * w) + "px, 0, 0)";
+            var w = getSlideW();
+            track.style.transform = "translate3d(" + (-current * w) + "px, 0, 0)";
 
-      updateBtns();
-    }
+            updateBtns();
+          }
 
-    function updateBtns(){
-      var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
-      if (btns.length >= 1) btns[0].disabled = (current === 0);
-      if (btns.length >= 2) btns[1].disabled = (current === items.length - 1);
-    }
+          function updateBtns(){
+            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
+            if (btns.length >= 1) btns[0].disabled = (current === 0);
+            if (btns.length >= 2) btns[1].disabled = (current === items.length - 1);
+          }
 
-    function bindBtns(){
-      var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
-      if (!btns.length) return;
+          function bindBtns(){
+            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
+            if (!btns.length) return;
 
-      // Detecta por data-dir="prev|next" si existe, si no asume 1ro prev / 2do next
-      var prev = null, next = null;
+            // Detecta por data-dir="prev|next" si existe, si no asume 1ro prev / 2do next
+            var prev = null, next = null;
 
-      for (var k = 0; k < btns.length; k++){
-        var d = (btns[k].getAttribute("data-dir") || "").toLowerCase();
-        if (d === "prev") prev = btns[k];
-        if (d === "next") next = btns[k];
-      }
-      if (!prev && btns.length >= 1) prev = btns[0];
-      if (!next && btns.length >= 2) next = btns[1];
+            for (var k = 0; k < btns.length; k++){
+              var d = (btns[k].getAttribute("data-dir") || "").toLowerCase();
+              if (d === "prev") prev = btns[k];
+              if (d === "next") next = btns[k];
+            }
+            if (!prev && btns.length >= 1) prev = btns[0];
+            if (!next && btns.length >= 2) next = btns[1];
 
-      if (prev && !prev.__taxBound){
-        prev.__taxBound = true;
-        prev.addEventListener("click", function(e){
-          e.preventDefault();
-          goTo(current - 1);
-        });
-      }
+            if (prev && !prev.__taxBound){
+              prev.__taxBound = true;
+              prev.addEventListener("click", function(e){
+                e.preventDefault();
+                goTo(current - 1);
+              });
+            }
 
-      if (next && !next.__taxBound){
-        next.__taxBound = true;
-        next.addEventListener("click", function(e){
-          e.preventDefault();
-          goTo(current + 1);
-        });
-      }
-    }
+            if (next && !next.__taxBound){
+              next.__taxBound = true;
+              next.addEventListener("click", function(e){
+                e.preventDefault();
+                goTo(current + 1);
+              });
+            }
+          }
 
-    function bindSwipe(){
-      var startX = 0, startY = 0, active = false;
+          function bindSwipe(){
+            var startX = 0, startY = 0, active = false;
 
-      wrapper.addEventListener("touchstart", function(e){
-        if (!mq.matches) return;
-        if (!e.touches || e.touches.length !== 1) return;
-        active = true;
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      }, {passive:true});
+            wrapper.addEventListener("touchstart", function(e){
+              if (!mq.matches) return;
+              if (!e.touches || e.touches.length !== 1) return;
+              active = true;
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+            }, {passive:true});
 
-      wrapper.addEventListener("touchend", function(e){
-        if (!mq.matches) return;
-        if (!active) return;
-        active = false;
+            wrapper.addEventListener("touchend", function(e){
+              if (!mq.matches) return;
+              if (!active) return;
+              active = false;
 
-        var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
-        if (!t) return;
+              var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+              if (!t) return;
 
-        var dx = t.clientX - startX;
-        var dy = t.clientY - startY;
+              var dx = t.clientX - startX;
+              var dy = t.clientY - startY;
 
-        // evita interferir con scroll vertical
-        if (Math.abs(dx) < 35) return;
-        if (Math.abs(dx) < Math.abs(dy)) return;
+              // evita interferir con scroll vertical
+              if (Math.abs(dx) < 35) return;
+              if (Math.abs(dx) < Math.abs(dy)) return;
 
-        if (dx < 0) goTo(current + 1);
-        else goTo(current - 1);
-      }, {passive:true});
-    }
+              if (dx < 0) goTo(current + 1);
+              else goTo(current - 1);
+            }, {passive:true});
+          }
 
-    function onMode(){
-      if (mq.matches){
-        placeNavMobile();
-        bindBtns();
-        goTo(current);
-      } else {
-        restoreNavDesktop();
-      }
-    }
+          function onMode(){
+            if (mq.matches){
+              placeNavMobile();
+              bindBtns();
+              goTo(current);
+            } else {
+              restoreNavDesktop();
+            }
+          }
 
-    window.addEventListener("resize", function(){
-      if (!mq.matches) return;
-      goTo(current);
-    });
+          window.addEventListener("resize", function(){
+            if (!mq.matches) return;
+            goTo(current);
+          });
 
-    bindSwipe();
-    safeAddMqListener(mq, onMode);
-    onMode();
-  }
+          bindSwipe();
+          safeAddMqListener(mq, onMode);
+          onMode();
+        }
 
-  function boot(){
-    var blocks = document.querySelectorAll(".tax_lanz_block");
-    for (var i = 0; i < blocks.length; i++){
-      initMobileCarousel(blocks[i]);
-    }
-  }
+        function boot(){
+          var blocks = document.querySelectorAll(".tax_lanz_block");
+          for (var i = 0; i < blocks.length; i++){
+            initMobileCarousel(blocks[i]);
+          }
+        }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
-})();
-</script>
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", boot);
+        } else {
+          boot();
+        }
+      })();
+      </script>
 
     </section>
     <?php
-  endif; 
-} 
+  endif;
+}
 ?>
 
 <?php
@@ -504,8 +504,9 @@ if ( $coleccion_term instanceof WP_Term ) {
  * - background1 (image)
  * - title1 (text)
  * - description1 (textarea)
- * - background2, title2, description2
- * - background3, title3, description3
+ * - background2 (file/video)
+ * - title2 (text)
+ * - description2 (textarea)
  */
 
 if ( ! function_exists('get_field') ) {
@@ -523,16 +524,97 @@ if ( ! function_exists('get_field') ) {
      */
     if ( ! function_exists('nl_tax_gallery_img_url') ) {
         function nl_tax_gallery_img_url( $img, $size = 'large' ) {
-            if (is_array($img)) {
-                if (!empty($img['sizes'][$size])) return esc_url($img['sizes'][$size]);
-                if (!empty($img['url']))          return esc_url($img['url']);
-            } elseif (is_numeric($img)) {
+            if ( is_array($img) ) {
+                if ( ! empty($img['sizes'][$size]) ) return esc_url($img['sizes'][$size]);
+                if ( ! empty($img['url']) )          return esc_url($img['url']);
+            } elseif ( is_numeric($img) ) {
                 $src = wp_get_attachment_image_src((int) $img, $size);
-                if ($src && !empty($src[0]))      return esc_url($src[0]);
-            } elseif (is_string($img) && filter_var($img, FILTER_VALIDATE_URL)) {
+                if ($src && !empty($src[0])) return esc_url($src[0]);
+            } elseif ( is_string($img) && filter_var($img, FILTER_VALIDATE_URL) ) {
                 return esc_url($img);
             }
             return '';
+        }
+    }
+
+    /**
+     * Helper para obtener datos de archivo/video
+     */
+    if ( ! function_exists('nl_tax_gallery_media_data') ) {
+        function nl_tax_gallery_media_data( $file ) {
+            $url  = '';
+            $mime = '';
+            $ext  = '';
+
+            if ( is_array($file) ) {
+                if ( ! empty($file['url']) ) {
+                    $url = $file['url'];
+                }
+
+                if ( ! empty($file['mime_type']) ) {
+                    $mime = $file['mime_type'];
+                } elseif ( ! empty($file['type']) && ! empty($file['subtype']) ) {
+                    $mime = $file['type'] . '/' . $file['subtype'];
+                }
+
+                if ( empty($mime) && ! empty($file['filename']) ) {
+                    $wp_filetype = wp_check_filetype($file['filename']);
+                    if ( ! empty($wp_filetype['type']) ) {
+                        $mime = $wp_filetype['type'];
+                    }
+                    if ( ! empty($wp_filetype['ext']) ) {
+                        $ext = strtolower($wp_filetype['ext']);
+                    }
+                }
+
+                if ( empty($ext) && ! empty($url) ) {
+                    $path = parse_url($url, PHP_URL_PATH);
+                    if ( $path ) {
+                        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    }
+                }
+            } elseif ( is_numeric($file) ) {
+                $file_id = (int) $file;
+                $url     = wp_get_attachment_url($file_id);
+                $mime    = get_post_mime_type($file_id);
+
+                $file_path = get_attached_file($file_id);
+                if ( $file_path ) {
+                    $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+                }
+            } elseif ( is_string($file) && filter_var($file, FILTER_VALIDATE_URL) ) {
+                $url = $file;
+
+                $wp_filetype = wp_check_filetype($url);
+                if ( ! empty($wp_filetype['type']) ) {
+                    $mime = $wp_filetype['type'];
+                }
+                if ( ! empty($wp_filetype['ext']) ) {
+                    $ext = strtolower($wp_filetype['ext']);
+                }
+
+                if ( empty($ext) ) {
+                    $path = parse_url($url, PHP_URL_PATH);
+                    if ( $path ) {
+                        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    }
+                }
+            }
+
+            $is_video = false;
+
+            if ( $mime && strpos($mime, 'video/') === 0 ) {
+                $is_video = true;
+            } elseif ( in_array($ext, ['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v'], true) ) {
+                $is_video = true;
+            }
+
+            return [
+                'url'      => $url ? esc_url($url) : '',
+                'mime'     => $mime ? esc_attr($mime) : '',
+                'ext'      => $ext,
+                'is_video' => $is_video,
+            ];
         }
     }
 
@@ -540,15 +622,14 @@ if ( ! function_exists('get_field') ) {
     $section_id = 'tax-gallery-' . ( $term ? $term->term_id : uniqid() );
     $classes    = 'tax_gallery_block';
 
-    // Armo las 3 secciones
+    // Armo SOLO 2 secciones
     $sections = [];
     $has_any  = false;
 
     if ( $term ) {
-        $term_key = $term->taxonomy . '_' . $term->term_id; // por si usás este formato en ACF
+        $term_key = $term->taxonomy . '_' . $term->term_id;
 
-        for ($i = 1; $i <= 3; $i++) {
-            // Intentamos primero con el objeto término, luego con "coleccion_{id}"
+        for ( $i = 1; $i <= 2; $i++ ) {
             $bg_raw = get_field("background{$i}", $term);
             if ( ! $bg_raw ) {
                 $bg_raw = get_field("background{$i}", $term_key);
@@ -564,18 +645,46 @@ if ( ! function_exists('get_field') ) {
                 $d = (string) get_field("description{$i}", $term_key);
             }
 
-            $bg_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
-
             $t = trim($t);
             $d = trim($d);
 
+            $media_type = '';
+            $media_url  = '';
+            $media_mime = '';
+
+            if ( $i === 2 ) {
+                // background2 ahora es FIELD TIPO ARCHIVO para video
+                $media = nl_tax_gallery_media_data($bg_raw);
+
+                if ( ! empty($media['url']) && ! empty($media['is_video']) ) {
+                    $media_type = 'video';
+                    $media_url  = $media['url'];
+                    $media_mime = $media['mime'];
+                } else {
+                    // fallback por si alguna vez suben imagen igual
+                    $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
+                    if ( $img_url ) {
+                        $media_type = 'image';
+                        $media_url  = $img_url;
+                    }
+                }
+            } else {
+                $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
+                if ( $img_url ) {
+                    $media_type = 'image';
+                    $media_url  = $img_url;
+                }
+            }
+
             $sections[$i] = [
-                'bg' => $bg_url,
-                't'  => $t,
-                'd'  => $d,
+                'media_type' => $media_type,
+                'media_url'  => $media_url,
+                'media_mime' => $media_mime,
+                't'          => $t,
+                'd'          => $d,
             ];
 
-            if ( $bg_url !== '' || $t !== '' || $d !== '' ) {
+            if ( $media_url !== '' || $t !== '' || $d !== '' ) {
                 $has_any = true;
             }
         }
@@ -583,29 +692,48 @@ if ( ! function_exists('get_field') ) {
 
     if ( $has_any ) : ?>
         <section id="<?php echo esc_attr($section_id); ?>" class="<?php echo esc_attr($classes); ?>">
-            <?php for ($i = 1; $i <= 3; $i++):
-                $bg = $sections[$i]['bg'] ?? '';
-                $t  = $sections[$i]['t'] ?? '';
-                $d  = $sections[$i]['d'] ?? '';
+            <?php for ( $i = 1; $i <= 2; $i++ ) :
+                $media_type = $sections[$i]['media_type'] ?? '';
+                $media_url  = $sections[$i]['media_url'] ?? '';
+                $media_mime = $sections[$i]['media_mime'] ?? '';
+                $t          = $sections[$i]['t'] ?? '';
+                $d          = $sections[$i]['d'] ?? '';
 
-                if ($bg === '' && $t === '' && $d === '') continue;
+                if ( $media_url === '' && $t === '' && $d === '' ) continue;
             ?>
                 <div class="tax_gallery_section tax_gallery_section-<?php echo (int) $i; ?>">
-                    <!-- Imagen de fondo STICKY -->
-                    <div class="tax_gallery_section-background"
-                        <?php if ($bg): ?>style="background-image:url('<?php echo esc_url($bg); ?>');"<?php endif; ?>>
+                    <!-- Fondo sticky -->
+                    <div class="tax_gallery_section-background">
+                        <?php if ( $media_type === 'video' && $media_url ) : ?>
+                            <video
+                                class="tax_gallery_bg-video"
+                                autoplay
+                                muted
+                                loop
+                                playsinline
+                                preload="metadata">
+                                <source src="<?php echo esc_url($media_url); ?>"<?php if ( $media_mime ) : ?> type="<?php echo esc_attr($media_mime); ?>"<?php endif; ?>>
+                            </video>
+                        <?php elseif ( $media_type === 'image' && $media_url ) : ?>
+                            <img
+                                class="tax_gallery_bg-image"
+                                src="<?php echo esc_url($media_url); ?>"
+                                alt=""
+                                loading="lazy"
+                                decoding="async">
+                        <?php endif; ?>
                     </div>
 
                     <div class="tax_gallery_content-wrapper">
                         <div class="tax_gallery_content-column">
                             <div class="tax_gallery_content-box">
-                                <?php if ($t): ?>
+                                <?php if ( $t ) : ?>
                                     <h2 class="font-overline text-white">
                                         <?php echo esc_html($t); ?>
                                     </h2>
                                 <?php endif; ?>
 
-                                <?php if ($d): ?>
+                                <?php if ( $d ) : ?>
                                     <p class="font-body-medium-light text-white">
                                         <?php echo wp_kses_post(nl2br($d)); ?>
                                     </p>
@@ -803,138 +931,6 @@ if ( function_exists('get_field') ) {
         } // is_array( $lanz )
     } // $lanz_term instanceof WP_Term
 } // function_exists('get_field')
-?>
-
-<?php
-// =============================
-// Sección: Próximos eventos (Events)
-// Grupo ACF en la taxonomía "coleccion":
-//  - events
-//      - pretitle_events (text)
-//      - year_events (text)
-//      - title_events (text)
-//      - description_events (textarea)
-//      - url_events (url)
-// =============================
-
-if ( function_exists('get_field') ) {
-
-    // Reusamos $term si ya existe, si no lo tomamos de la query
-    $events_term = ( isset($term) && $term instanceof WP_Term )
-        ? $term
-        : get_queried_object();
-
-    if ( $events_term instanceof WP_Term ) {
-
-        $term_key = $events_term->taxonomy . '_' . $events_term->term_id;
-
-        // Leemos el GROUP "events" desde el término
-        $events = get_field('events', $events_term);
-        if ( ! $events ) {
-            $events = get_field('events', $term_key);
-        }
-
-        if ( is_array($events) ) {
-
-            $pretitle = isset($events['pretitle_events'])
-                ? trim((string) $events['pretitle_events'])
-                : '';
-
-            $year = isset($events['year_events'])
-                ? trim((string) $events['year_events'])
-                : '';
-
-            $title = isset($events['title_events'])
-                ? trim((string) $events['title_events'])
-                : '';
-
-            $description = isset($events['description_events'])
-                ? trim((string) $events['description_events'])
-                : '';
-
-            $url_button = isset($events['url_events'])
-                ? trim((string) $events['url_events'])
-                : '';
-
-            // ¿Hay algo de contenido?
-            $has_content = (
-                $pretitle !== '' ||
-                $year !== '' ||
-                $title !== '' ||
-                $description !== '' ||
-                $url_button !== ''
-            );
-
-            if ( $has_content ) :
-
-                $sec_id = 'tax-events-' . $events_term->term_id;
-                ?>
-                <section id="<?php echo esc_attr($sec_id); ?>" class="tax_events_block">
-                  <div class="tax_events_container">
-                    <div class="tax_events_content">
-
-                      <?php if ( $pretitle || $year ) : ?>
-                        <div class="tax_events_eyebrow">
-                          <?php if ( $pretitle ) : ?>
-                            <span class="tax_events_eyebrow-label font-overline">
-                              <?php echo esc_html($pretitle); ?>
-                            </span>
-                          <?php elseif ( current_user_can('edit_posts') ): ?>
-                            <span class="tax_events_eyebrow-label font-overline" style="opacity:.6;">
-                              Asigná el campo “pretitle_events”.
-                            </span>
-                          <?php endif; ?>
-
-                          <?php if ( $year ) : ?>
-                            <span class="tax_events_eyebrow-year font-overline">
-                              <?php echo esc_html($year); ?>
-                            </span>
-                          <?php elseif ( current_user_can('edit_posts') ): ?>
-                            <span class="tax_events_eyebrow-year font-overline" style="opacity:.6;">
-                              Año
-                            </span>
-                          <?php endif; ?>
-                        </div>
-                      <?php endif; ?>
-
-                      <?php if ( $title ) : ?>
-                        <h1 class="tax_events_title font-heading-1">
-                          <?php echo nl2br( esc_html($title) ); ?>
-                        </h1>
-                      <?php elseif ( current_user_can('edit_posts') ): ?>
-                        <h1 class="tax_events_title font-heading-1" style="opacity:.6;">
-                          Asigná el campo “title_events”.
-                        </h1>
-                      <?php endif; ?>
-
-                      <?php if ( $description ) : ?>
-                        <div class="tax_events_description font-body-medium-light">
-                          <?php echo wp_kses_post( wpautop($description) ); ?>
-                           <?php if ( $url_button ) : ?>
-                        <a href="<?php echo esc_url($url_button); ?>" class="btn btn-cafe">
-                          Registrarse
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M10.1458 7.5H0V5.83333H10.1458L5.47917 1.16667L6.66667 0L13.3333 6.66667L6.66667 13.3333L5.47917 12.1667L10.1458 7.5Z" fill="white"/>
-                          </svg>
-                        </a>
-                      <?php endif; ?>
-                        </div>
-                      <?php elseif ( current_user_can('edit_posts') ): ?>
-                        <div class="tax_events_description font-body-medium-light" style="opacity:.6;">
-                          Asigná el campo “description_events”.
-                        </div>
-                      <?php endif; ?>
-
-                     
-
-                    </div><!-- /.tax_events_content -->
-                  </div><!-- /.tax_events_container -->
-                </section>
-                <?php
-            endif; // $has_content
-        }
-    }
-}
 ?>
 
 </main>

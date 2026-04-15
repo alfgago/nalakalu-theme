@@ -50,6 +50,7 @@ if ( have_rows('carousel_item') ) {
   }
 }
 $total_slides = count($slides);
+$has_carousel = $total_slides > 1;
 
 if ( ! function_exists('nl_tour_img_url') ) {
   function nl_tour_img_url( $img, $size = 'large' ) {
@@ -148,12 +149,12 @@ if ( ! function_exists('nl_tour_img_url') ) {
           <?php endif; ?>
         </div>
 
-        <div class="sh_tour_carousel-controls">
-           <div class="cont-hidden"></div>
-          <div class="sh_tour_nav-buttons">
-            <button type="button" class="sh_tour_nav-btn sh_tour_nav-btn--prev" aria-label="Anterior">←</button>
-            <button type="button" class="sh_tour_nav-btn sh_tour_nav-btn--next" aria-label="Siguiente">→</button>
-          </div>
+      <?php if ($has_carousel): ?>
+  <div class="sh_tour_nav-buttons">
+    <button type="button" class="sh_tour_nav-btn sh_tour_nav-btn--prev" aria-label="Anterior">←</button>
+    <button type="button" class="sh_tour_nav-btn sh_tour_nav-btn--next" aria-label="Siguiente">→</button>
+  </div>
+<?php endif; ?>
 <?php if ($button_url): ?>
          <button class="btn btn-cafe only-mobile" <a href="<?php echo esc_url($button_url); ?>">
             Registrarse<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -188,11 +189,12 @@ if ( ! function_exists('nl_tour_img_url') ) {
         if (!items.length) return;
 
         let current        = 0;
-        const total        = items.length;
-        const currentSpan  = block.querySelector('.sh_tour_counter-current');
-        const totalSpan    = block.querySelector('.sh_tour_counter-total');
-        const prevBtn      = block.querySelector('.sh_tour_nav-btn--prev');
-        const nextBtn      = block.querySelector('.sh_tour_nav-btn--next');
+const total        = items.length;
+const hasCarousel  = total > 1;
+const currentSpan  = block.querySelector('.sh_tour_counter-current');
+const totalSpan    = block.querySelector('.sh_tour_counter-total');
+const prevBtn      = block.querySelector('.sh_tour_nav-btn--prev');
+const nextBtn      = block.querySelector('.sh_tour_nav-btn--next');
 
         if (totalSpan) totalSpan.textContent = String(total).padStart(2, '0');
 
@@ -217,24 +219,31 @@ if ( ! function_exists('nl_tour_img_url') ) {
           showSlide(current);
         }
 
-        if (nextBtn) nextBtn.addEventListener('click', nextSlide);
-        if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+        if (hasCarousel) {
+  if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+  if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+}
 
-        showSlide(current);
+showSlide(current);
 
-        let auto = setInterval(nextSlide, 5000);
+let auto = null;
 
-        block.addEventListener('mouseenter', function(){
-          if (auto) {
-            clearInterval(auto);
-            auto = null;
-          }
-        });
-        block.addEventListener('mouseleave', function(){
-          if (!auto) {
-            auto = setInterval(nextSlide, 5000);
-          }
-        });
+if (hasCarousel) {
+  auto = setInterval(nextSlide, 5000);
+
+  block.addEventListener('mouseenter', function(){
+    if (auto) {
+      clearInterval(auto);
+      auto = null;
+    }
+  });
+
+  block.addEventListener('mouseleave', function(){
+    if (!auto) {
+      auto = setInterval(nextSlide, 5000);
+    }
+  });
+}
       })();
     </script>
   <?php endif; ?>

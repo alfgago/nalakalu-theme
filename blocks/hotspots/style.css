@@ -25,6 +25,8 @@
   width: 30%;
 }
 
+
+
 .nl-hotspots .testimonial {
   margin-top: 3rem;
   margin-bottom: 2rem;
@@ -433,6 +435,7 @@ body.hs-modal-open {
     max-width: 100%;
     overflow-wrap: anywhere;
     word-break: break-word;
+    text-align:justify;
   }
 
   /* En mobile el product-card NO se ve */

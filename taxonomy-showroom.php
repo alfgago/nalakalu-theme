@@ -81,7 +81,7 @@ $showroom_terms = get_terms([
     <div
         class="nlk-shop__banner"
         <?php if ($banner_url) : ?>
-            style="background-image:url('<?php echo esc_url($banner_url); ?>');"
+            style="background-image:url('<?php echo esc_url($banner_url); ?>'); background-position:center center; background-repeat:no-repeat; background-size:cover;"
         <?php endif; ?>
     ></div>
 

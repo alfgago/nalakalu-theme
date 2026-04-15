@@ -123,7 +123,7 @@ body.admin-bar { --nl-adminbar-h: 32px; }
 
 body.admin-bar { --nl-adminbar-h: 32px; }
 
-.nl-breadcrumbs{ width:100%; padding:1.2rem 8rem 1rem 8rem; margin-top: calc(  (var(--nl-header-h, 96px) + var(--nl-adminbar-h, 0px)) - 16px ); position: relative;z-index: 1; }
+.nl-breadcrumbs{ width:100%; padding:1.2rem 8rem 1rem 8rem; margin-top:4.5rem; position: relative;z-index: 1; }
 
 
 .info-product-container{
