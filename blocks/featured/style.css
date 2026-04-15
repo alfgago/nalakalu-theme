@@ -3,7 +3,7 @@
 .row1{display:flex;flex-direction:row;justify-content:space-around; gap:4rem;margin-bottom: 2rem;}
 .column1{display:flex;flex-direction:column;width:64%;gap:2rem; justify-content: center;} .column1 .font-overline{margin-top:0.5rem;}
 .column2{display:flex;flex-direction:column;align-items:flex-end;width:36%;gap:2rem;}
-.column2 .font-body-medium-light{color:#919191;text-align:right; margin-bottom: 0;}
+.column2 .font-body-medium-light{color:#919191;text-align:justify; margin-bottom: 0;}
 .product-row-link{display:block;color:inherit;}
 .row-products{display:flex;flex-direction:row;align-items:center;padding:1.5rem 0;border-bottom:1px solid #c3c3c3;}
 .products-column1{display:flex;width:40%;}
