@@ -44,6 +44,7 @@ class NLK_Woo_CSV_Import
 		WP_CLI::add_command('nlk import-woo-csv', array(__CLASS__, 'cli_import_command'));
 		WP_CLI::add_command('nlk build-woo-json', array(__CLASS__, 'cli_build_json_command'));
 		WP_CLI::add_command('nlk import-woo-json', array(__CLASS__, 'cli_import_json_command'));
+		WP_CLI::add_command('nlk cleanup-woo-import-placeholders', array(__CLASS__, 'cli_cleanup_placeholders_command'));
 	}
 
 	/**
@@ -242,6 +243,9 @@ class NLK_Woo_CSV_Import
 	 * [--skip-existing]
 	 * : Do not update matches. Only create missing products and variations.
 	 *
+	 * [--force-sync]
+	 * : Delete matched local products/variations and recreate them from the JSON.
+	 *
 	 * @when after_wp_load
 	 */
 	public static function cli_import_json_command($args, $assoc_args)
@@ -249,6 +253,7 @@ class NLK_Woo_CSV_Import
 		self::include_importer_dependencies();
 
 		$update_existing = ! isset($assoc_args['skip-existing']);
+		$force_sync      = ! empty($assoc_args['force-sync']);
 		if (isset($assoc_args['update-existing'])) {
 			$update_existing = filter_var($assoc_args['update-existing'], FILTER_VALIDATE_BOOLEAN);
 		}
@@ -260,6 +265,17 @@ class NLK_Woo_CSV_Import
 
 		if (empty($files)) {
 			WP_CLI::error('No encontre chunks JSON para importar.');
+		}
+
+		if ($force_sync) {
+			$cleanup = self::cleanup_importing_placeholders(true);
+			WP_CLI::log(
+				sprintf(
+					'Placeholders limpiados antes de importar: products=%d | variations=%d',
+					$cleanup['deleted_products'],
+					$cleanup['deleted_variations']
+				)
+			);
 		}
 
 		$totals        = self::empty_import_stats();
@@ -276,7 +292,29 @@ class NLK_Woo_CSV_Import
 				continue;
 			}
 
-			$result = self::import_json_chunk($chunk, wp_basename($path), $update_existing);
+			$effective_update_existing = $update_existing;
+
+			if ($force_sync) {
+				$purge = self::force_sync_cleanup_json_chunk($chunk);
+				$effective_update_existing = false;
+
+				if ($purge['deleted_products'] > 0 || $purge['deleted_variations'] > 0) {
+					WP_CLI::log(
+						sprintf(
+							'Chunk %d purge | deleted_products=%d | deleted_variations=%d',
+							$current_index,
+							$purge['deleted_products'],
+							$purge['deleted_variations']
+						)
+					);
+				}
+
+				foreach ($purge['messages'] as $message) {
+					WP_CLI::warning($message);
+				}
+			}
+
+			$result = self::import_json_chunk($chunk, wp_basename($path), $effective_update_existing);
 			$totals = self::merge_import_stats($totals, $result['stats']);
 
 			WP_CLI::log(
@@ -309,6 +347,47 @@ class NLK_Woo_CSV_Import
 				$totals['failed'],
 				$totals['skipped'],
 				$totals['swatch_terms_updated']
+			)
+		);
+	}
+
+	/**
+	 * Removes Woo placeholder rows left behind by failed imports.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--yes]
+	 * : Delete the placeholders. Without this flag the command only reports counts.
+	 *
+	 * @when after_wp_load
+	 */
+	public static function cli_cleanup_placeholders_command($args, $assoc_args)
+	{
+		$delete = ! empty($assoc_args['yes']);
+		$result = self::cleanup_importing_placeholders($delete);
+
+		WP_CLI::log(
+			sprintf(
+				'Placeholders importing encontrados: products=%d | variations=%d',
+				$result['products'],
+				$result['variations']
+			)
+		);
+
+		if (! empty($result['sample_ids'])) {
+			WP_CLI::log('Ejemplos: ' . implode(', ', $result['sample_ids']));
+		}
+
+		if (! $delete) {
+			WP_CLI::warning('Vista previa solamente. Ejecute con --yes para borrarlos permanentemente.');
+			return;
+		}
+
+		WP_CLI::success(
+			sprintf(
+				'Placeholders eliminados. products=%d | variations=%d',
+				$result['deleted_products'],
+				$result['deleted_variations']
 			)
 		);
 	}
@@ -1119,6 +1198,226 @@ class NLK_Woo_CSV_Import
 		);
 	}
 
+	protected static function cleanup_importing_placeholders($delete = false)
+	{
+		$ids = get_posts(
+			array(
+				'post_type'      => array('product', 'product_variation'),
+				'post_status'    => 'importing',
+				'fields'         => 'ids',
+				'posts_per_page' => -1,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+			)
+		);
+
+		$result = array(
+			'products'           => 0,
+			'variations'         => 0,
+			'deleted_products'   => 0,
+			'deleted_variations' => 0,
+			'sample_ids'         => array(),
+		);
+
+		foreach ($ids as $id) {
+			$post_type = get_post_type($id);
+
+			if ('product_variation' === $post_type) {
+				$result['variations']++;
+			} else {
+				$result['products']++;
+			}
+
+			if (count($result['sample_ids']) < 12) {
+				$result['sample_ids'][] = (string) $id;
+			}
+		}
+
+		if (! $delete) {
+			return $result;
+		}
+
+		$variation_ids = array();
+		$product_ids   = array();
+
+		foreach ($ids as $id) {
+			if ('product_variation' === get_post_type($id)) {
+				$variation_ids[] = absint($id);
+			} else {
+				$product_ids[] = absint($id);
+			}
+		}
+
+		foreach ($variation_ids as $id) {
+			if (wp_delete_post($id, true)) {
+				$result['deleted_variations']++;
+			}
+		}
+
+		foreach ($product_ids as $id) {
+			if (wp_delete_post($id, true)) {
+				$result['deleted_products']++;
+			}
+		}
+
+		self::$source_id_cache = array();
+
+		return $result;
+	}
+
+	protected static function force_sync_cleanup_json_chunk($chunk)
+	{
+		$products = ! empty($chunk['products']) && is_array($chunk['products']) ? $chunk['products'] : array();
+		$ids      = array();
+
+		foreach ($products as $product) {
+			$ids = array_merge($ids, self::collect_local_ids_for_json_product($product));
+		}
+
+		$ids = array_values(array_unique(array_filter(array_map('absint', $ids))));
+
+		if (empty($ids)) {
+			return array(
+				'deleted_products'   => 0,
+				'deleted_variations' => 0,
+				'messages'           => array(),
+			);
+		}
+
+		$variation_ids = array();
+		$product_ids   = array();
+
+		foreach ($ids as $id) {
+			if ('product_variation' === get_post_type($id)) {
+				$variation_ids[] = $id;
+				continue;
+			}
+
+			$product_ids[] = $id;
+
+			$children = get_posts(
+				array(
+					'post_type'      => 'product_variation',
+					'post_parent'    => $id,
+					'post_status'    => 'any',
+					'fields'         => 'ids',
+					'posts_per_page' => -1,
+				)
+			);
+
+			foreach ($children as $child_id) {
+				$variation_ids[] = absint($child_id);
+			}
+		}
+
+		$variation_ids = array_values(array_unique(array_filter($variation_ids)));
+		$product_ids   = array_values(array_unique(array_filter($product_ids)));
+		$messages      = array();
+		$deleted_variations = 0;
+		$deleted_products   = 0;
+
+		foreach ($variation_ids as $id) {
+			if (wp_delete_post($id, true)) {
+				$deleted_variations++;
+			}
+		}
+
+		foreach ($product_ids as $id) {
+			if (wp_delete_post($id, true)) {
+				$deleted_products++;
+			}
+		}
+
+		self::$source_id_cache = array();
+
+		if (0 === $deleted_products && 0 === $deleted_variations) {
+			$messages[] = 'Force sync activo, pero no se pudo borrar ningun producto coincidente.';
+		}
+
+		return array(
+			'deleted_products'   => $deleted_products,
+			'deleted_variations' => $deleted_variations,
+			'messages'           => $messages,
+		);
+	}
+
+	protected static function collect_local_ids_for_json_product($product)
+	{
+		$ids = array();
+
+		if (! empty($product['parent']) && is_array($product['parent'])) {
+			$ids = array_merge($ids, self::collect_local_ids_for_json_row_record($product['parent']));
+		}
+
+		if (! empty($product['variations']) && is_array($product['variations'])) {
+			foreach ($product['variations'] as $variation) {
+				$ids = array_merge($ids, self::collect_local_ids_for_json_row_record($variation));
+			}
+		}
+
+		return array_values(array_unique(array_filter(array_map('absint', $ids))));
+	}
+
+	protected static function collect_local_ids_for_json_row_record($row_record)
+	{
+		$ids = array();
+
+		if (! is_array($row_record)) {
+			return $ids;
+		}
+
+		$references = array();
+
+		if (! empty($row_record['source_id'])) {
+			$references[] = (string) $row_record['source_id'];
+		}
+
+		if (! empty($row_record['source_sku'])) {
+			$references[] = (string) $row_record['source_sku'];
+		}
+
+		if (! empty($row_record['merged_row']) && is_array($row_record['merged_row'])) {
+			$sku = trim((string) self::row_value($row_record['merged_row'], 'SKU'));
+			if ('' !== $sku) {
+				$references[] = $sku;
+			}
+		}
+
+		foreach (array_unique(array_filter($references)) as $reference) {
+			$matched = self::find_local_product_id_for_force_reference($reference);
+			if ($matched) {
+				$ids[] = absint($matched);
+			}
+		}
+
+		return array_values(array_unique(array_filter($ids)));
+	}
+
+	protected static function find_local_product_id_for_force_reference($reference)
+	{
+		$reference = trim((string) $reference);
+
+		if ('' === $reference) {
+			return 0;
+		}
+
+		$product_id = self::find_local_product_id_by_meta(self::SOURCE_META_KEY, $reference);
+
+		if (! $product_id) {
+			$product_id = self::find_local_product_id_by_meta(self::SOURCE_SKU_META_KEY, $reference);
+		}
+
+		if (! $product_id) {
+			$product_id = self::find_local_product_id_by_meta('_original_id', $reference);
+		}
+
+		if (! $product_id) {
+			$product_id = (int) wc_get_product_id_by_sku($reference);
+		}
+
+		return absint($product_id);
+	}
+
 	protected static function summarize_csv($path)
 	{
 		$key = md5($path . '|' . filemtime($path) . '|' . filesize($path));
@@ -1841,14 +2140,14 @@ class NLK_Woo_CSV_Import
 
 		if ($source_id) {
 			$matched = self::find_local_product_id_by_reference($source_id);
-			if ($matched) {
+			if ($matched && ! self::is_importing_placeholder_product($matched)) {
 				return $matched;
 			}
 		}
 
 		if ($sku) {
 			$matched = self::find_local_product_id_by_reference($sku);
-			if ($matched) {
+			if ($matched && ! self::is_importing_placeholder_product($matched)) {
 				return intval($matched);
 			}
 		}
@@ -2524,6 +2823,19 @@ class NLK_Woo_CSV_Import
 				unset(self::$source_id_cache[ $source_id ]);
 			}
 		}
+	}
+
+	protected static function is_importing_placeholder_product($product_id)
+	{
+		$product_id = absint($product_id);
+
+		if ($product_id <= 0) {
+			return false;
+		}
+
+		$product = wc_get_product($product_id);
+
+		return $product && 'importing' === $product->get_status();
 	}
 
 	protected static function row_value($row, $key)
