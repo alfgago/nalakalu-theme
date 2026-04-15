@@ -41,6 +41,8 @@ class NLK_Woo_CSV_Import
 	protected static function register_cli_command()
 	{
 		WP_CLI::add_command('nlk import-woo-csv', array(__CLASS__, 'cli_import_command'));
+		WP_CLI::add_command('nlk build-woo-json', array(__CLASS__, 'cli_build_json_command'));
+		WP_CLI::add_command('nlk import-woo-json', array(__CLASS__, 'cli_import_json_command'));
 	}
 
 	/**
@@ -153,6 +155,152 @@ class NLK_Woo_CSV_Import
 		WP_CLI::success(
 			sprintf(
 				'Importacion terminada. imported=%d | imported_variations=%d | updated=%d | failed=%d | skipped=%d | swatch_terms=%d',
+				$totals['imported'],
+				$totals['imported_variations'],
+				$totals['updated'],
+				$totals['failed'],
+				$totals['skipped'],
+				$totals['swatch_terms_updated']
+			)
+		);
+	}
+
+	/**
+	 * Builds deterministic JSON chunks grouped by parent product.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--file=<file>]
+	 * : Primary CSV basename inside the active theme, or an absolute path. Default: export-2-woo.csv.
+	 *
+	 * [--fallback=<file>]
+	 * : Optional fallback CSV with images/descriptions. Default: export-1-woo.csv when available.
+	 *
+	 * [--chunk-size=<number>]
+	 * : Parent products per JSON file. Default: 25.
+	 *
+	 * [--output-dir=<dir>]
+	 * : Output directory. Default: <theme>/data/woo-import-chunks.
+	 *
+	 * @when after_wp_load
+	 */
+	public static function cli_build_json_command($args, $assoc_args)
+	{
+		$file_arg       = isset($assoc_args['file']) ? (string) $assoc_args['file'] : '';
+		$fallback_arg   = isset($assoc_args['fallback']) ? (string) $assoc_args['fallback'] : 'export-1-woo.csv';
+		$chunk_size     = isset($assoc_args['chunk-size']) ? max(1, min(100, absint($assoc_args['chunk-size']))) : 25;
+		$primary_file   = self::resolve_import_file($file_arg);
+		$fallback_file  = self::resolve_optional_file($fallback_arg);
+		$output_dir     = self::resolve_json_output_dir(isset($assoc_args['output-dir']) ? (string) $assoc_args['output-dir'] : '');
+
+		if (! $primary_file) {
+			WP_CLI::error('No encontre el CSV principal para construir los JSON.');
+		}
+
+		if (! $primary_file['supported']) {
+			WP_CLI::error('El CSV principal debe tener el formato de export-2-woo.csv.');
+		}
+
+		$result = self::build_json_chunks_from_csv($primary_file, $fallback_file, $chunk_size, $output_dir);
+
+		WP_CLI::log(sprintf('CSV principal: %s', $primary_file['path']));
+		WP_CLI::log(sprintf('CSV fallback: %s', $fallback_file ? $fallback_file['path'] : 'ninguno'));
+		WP_CLI::log(sprintf('Directorio JSON: %s', $output_dir));
+		WP_CLI::log(sprintf('Productos padre: %d', $result['total_products']));
+		WP_CLI::log(sprintf('Variaciones enlazadas: %d', $result['total_variations']));
+		WP_CLI::log(sprintf('Chunks creados: %d', count($result['files'])));
+
+		if (! empty($result['orphans'])) {
+			WP_CLI::warning(sprintf('Variaciones sin padre resuelto: %d', count($result['orphans'])));
+			if (! empty($result['orphan_file'])) {
+				WP_CLI::warning('Archivo de huerfanas: ' . $result['orphan_file']);
+			}
+		}
+
+		foreach ($result['files'] as $path) {
+			WP_CLI::log('JSON: ' . $path);
+		}
+
+		WP_CLI::success('JSONs listos para importar con wp nlk import-woo-json.');
+	}
+
+	/**
+	 * Imports products from prebuilt JSON chunks.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--dir=<dir>]
+	 * : Directory containing chunk JSON files. Default: <theme>/data/woo-import-chunks.
+	 *
+	 * [--file=<file>]
+	 * : Import a single JSON chunk file.
+	 *
+	 * [--update-existing=<bool>]
+	 * : Update existing products matched by imported source ID or SKU. Default: true.
+	 *
+	 * [--skip-existing]
+	 * : Do not update matches. Only create missing products and variations.
+	 *
+	 * @when after_wp_load
+	 */
+	public static function cli_import_json_command($args, $assoc_args)
+	{
+		self::include_importer_dependencies();
+
+		$update_existing = ! isset($assoc_args['skip-existing']);
+		if (isset($assoc_args['update-existing'])) {
+			$update_existing = filter_var($assoc_args['update-existing'], FILTER_VALIDATE_BOOLEAN);
+		}
+
+		$files = self::resolve_json_chunk_files(
+			isset($assoc_args['dir']) ? (string) $assoc_args['dir'] : '',
+			isset($assoc_args['file']) ? (string) $assoc_args['file'] : ''
+		);
+
+		if (empty($files)) {
+			WP_CLI::error('No encontre chunks JSON para importar.');
+		}
+
+		$totals        = self::empty_import_stats();
+		$total_files   = count($files);
+		$current_index = 0;
+
+		foreach ($files as $path) {
+			$current_index++;
+			$chunk = self::read_json_chunk_file($path);
+
+			if (! $chunk) {
+				WP_CLI::warning('No pude leer el JSON: ' . $path);
+				continue;
+			}
+
+			$result = self::import_json_chunk($chunk, wp_basename($path), $update_existing);
+			$totals = self::merge_import_stats($totals, $result['stats']);
+
+			WP_CLI::log(
+				sprintf(
+					'Chunk %d/%d | %s | products=%d | imported=%d | imported_variations=%d | updated=%d | failed=%d | skipped=%d | swatch_terms=%d',
+					$current_index,
+					$total_files,
+					wp_basename($path),
+					intval(isset($chunk['products']) && is_array($chunk['products']) ? count($chunk['products']) : 0),
+					$result['stats']['imported'],
+					$result['stats']['imported_variations'],
+					$result['stats']['updated'],
+					$result['stats']['failed'],
+					$result['stats']['skipped'],
+					$result['stats']['swatch_terms_updated']
+				)
+			);
+
+			foreach ($result['messages'] as $message) {
+				WP_CLI::warning($message);
+			}
+		}
+
+		WP_CLI::success(
+			sprintf(
+				'Importacion JSON terminada. imported=%d | imported_variations=%d | updated=%d | failed=%d | skipped=%d | swatch_terms=%d',
 				$totals['imported'],
 				$totals['imported_variations'],
 				$totals['updated'],
@@ -547,6 +695,382 @@ class NLK_Woo_CSV_Import
 		return null;
 	}
 
+	protected static function resolve_optional_file($file_arg = '')
+	{
+		$file_arg = trim((string) $file_arg);
+
+		if ('' === $file_arg) {
+			return null;
+		}
+
+		return self::resolve_import_file($file_arg);
+	}
+
+	protected static function resolve_json_output_dir($dir_arg = '')
+	{
+		$dir_arg = trim((string) $dir_arg);
+
+		if ('' === $dir_arg) {
+			return untrailingslashit(get_template_directory() . '/data/woo-import-chunks');
+		}
+
+		if (wp_is_absolute_path($dir_arg)) {
+			return untrailingslashit($dir_arg);
+		}
+
+		return untrailingslashit(get_template_directory() . '/' . ltrim($dir_arg, '/\\'));
+	}
+
+	protected static function build_json_chunks_from_csv($primary_file, $fallback_file, $chunk_size, $output_dir)
+	{
+		$dataset = self::build_grouped_json_dataset($primary_file, $fallback_file);
+
+		if (! wp_mkdir_p($output_dir) && ! is_dir($output_dir)) {
+			WP_CLI::error('No pude crear el directorio de salida para los JSON.');
+		}
+
+		$generated_at = gmdate('c');
+		$chunks       = array_chunk($dataset['products'], $chunk_size);
+		$total_chunks = count($chunks);
+		$files        = array();
+
+		foreach ($chunks as $index => $products) {
+			$path    = trailingslashit($output_dir) . sprintf('woo-products-%03d.json', $index + 1);
+			$payload = array(
+				'schema_version'   => 1,
+				'generated_at'     => $generated_at,
+				'source_files'     => array(
+					'primary'  => $primary_file['path'],
+					'fallback' => $fallback_file ? $fallback_file['path'] : '',
+				),
+				'chunk_index'      => $index + 1,
+				'chunk_size'       => $chunk_size,
+				'total_chunks'     => $total_chunks,
+				'total_products'   => count($dataset['products']),
+				'total_variations' => $dataset['total_variations'],
+				'headers'          => $dataset['headers'],
+				'products'         => $products,
+			);
+
+			self::write_json_file($path, $payload);
+			$files[] = $path;
+		}
+
+		$orphan_file = '';
+
+		if (! empty($dataset['orphans'])) {
+			$orphan_file = trailingslashit($output_dir) . 'woo-products-orphans.json';
+			self::write_json_file(
+				$orphan_file,
+				array(
+					'schema_version' => 1,
+					'generated_at'   => $generated_at,
+					'source_files'   => array(
+						'primary'  => $primary_file['path'],
+						'fallback' => $fallback_file ? $fallback_file['path'] : '',
+					),
+					'headers'        => $dataset['headers'],
+					'variations'     => $dataset['orphans'],
+				)
+			);
+		}
+
+		$manifest_path = trailingslashit($output_dir) . 'manifest.json';
+		self::write_json_file(
+			$manifest_path,
+			array(
+				'schema_version' => 1,
+				'generated_at'   => $generated_at,
+				'chunk_size'     => $chunk_size,
+				'source_files'   => array(
+					'primary'  => $primary_file['path'],
+					'fallback' => $fallback_file ? $fallback_file['path'] : '',
+				),
+				'files'          => array_map('wp_basename', $files),
+				'orphan_file'    => $orphan_file ? wp_basename($orphan_file) : '',
+			)
+		);
+
+		return array(
+			'total_products'   => count($dataset['products']),
+			'total_variations' => $dataset['total_variations'],
+			'orphans'          => $dataset['orphans'],
+			'files'            => $files,
+			'manifest_file'    => $manifest_path,
+			'orphan_file'      => $orphan_file,
+		);
+	}
+
+	protected static function build_grouped_json_dataset($primary_file, $fallback_file)
+	{
+		$headers         = self::read_csv_headers($primary_file['path']);
+		$reader          = self::open_csv_file($primary_file['path']);
+		$fallback_lookup = self::get_fallback_lookup_from_file($fallback_file);
+		$products        = array();
+		$lookup_by_id    = array();
+		$lookup_by_sku   = array();
+		$variations      = array();
+		$total_variation = 0;
+
+		if (! $reader || empty($headers)) {
+			return array(
+				'headers'          => $headers,
+				'products'         => array(),
+				'orphans'          => array(),
+				'total_variations' => 0,
+			);
+		}
+
+		$reader->rewind();
+		$reader->fgetcsv();
+
+		while (! $reader->eof()) {
+			$row = self::normalize_csv_row($reader->fgetcsv(), $headers);
+
+			if (null === $row) {
+				continue;
+			}
+
+			$fallback_record = self::find_fallback_record_for_row($row, $fallback_lookup);
+			$merged_row      = self::merge_row_with_fallback_record($row, $fallback_record);
+			$row_record      = self::build_json_row_record($row, $merged_row, $fallback_record);
+			$type            = strtolower(trim((string) self::row_value($merged_row, 'Tipo')));
+
+			if ('variation' === $type) {
+				$variations[] = $row_record;
+				$total_variation++;
+				continue;
+			}
+
+			$group_key = self::build_json_source_key($merged_row);
+
+			$products[ $group_key ] = array(
+				'group_key'   => $group_key,
+				'source_id'   => trim((string) self::row_value($merged_row, 'ID')),
+				'source_sku'  => trim((string) self::row_value($merged_row, 'SKU')),
+				'type'        => $type ? $type : 'simple',
+				'parent'      => $row_record,
+				'variations'  => array(),
+			);
+
+			$source_id  = trim((string) self::row_value($merged_row, 'ID'));
+			$source_sku = trim((string) self::row_value($merged_row, 'SKU'));
+
+			if ('' !== $source_id) {
+				$lookup_by_id[ $source_id ] = $group_key;
+			}
+
+			if ('' !== $source_sku) {
+				$lookup_by_sku[ $source_sku ] = $group_key;
+			}
+		}
+
+		$orphans = array();
+
+		foreach ($variations as $variation) {
+			$parent_key = self::resolve_json_parent_group_key($variation['parent_reference'], $lookup_by_id, $lookup_by_sku);
+
+			if ('' === $parent_key || ! isset($products[ $parent_key ])) {
+				$orphans[] = $variation;
+				continue;
+			}
+
+			$products[ $parent_key ]['variations'][] = $variation;
+		}
+
+		return array(
+			'headers'          => $headers,
+			'products'         => array_values($products),
+			'orphans'          => $orphans,
+			'total_variations' => $total_variation,
+		);
+	}
+
+	protected static function build_json_row_record($primary_row, $merged_row, $fallback_record)
+	{
+		return array(
+			'source_id'        => trim((string) self::row_value($merged_row, 'ID')),
+			'source_sku'       => trim((string) self::row_value($merged_row, 'SKU')),
+			'parent_reference' => trim((string) self::row_value($merged_row, 'Superior')),
+			'type'             => strtolower(trim((string) self::row_value($merged_row, 'Tipo'))),
+			'primary_row'      => $primary_row,
+			'merged_row'       => $merged_row,
+			'fallback_row'     => ($fallback_record && isset($fallback_record['raw_row']) && is_array($fallback_record['raw_row'])) ? $fallback_record['raw_row'] : null,
+		);
+	}
+
+	protected static function build_json_source_key($row)
+	{
+		$source_id  = trim((string) self::row_value($row, 'ID'));
+		$source_sku = trim((string) self::row_value($row, 'SKU'));
+
+		if ('' !== $source_id) {
+			return 'id:' . $source_id;
+		}
+
+		if ('' !== $source_sku) {
+			return 'sku:' . $source_sku;
+		}
+
+		return 'hash:' . md5(wp_json_encode($row));
+	}
+
+	protected static function resolve_json_parent_group_key($reference, $lookup_by_id, $lookup_by_sku)
+	{
+		$reference = trim((string) $reference);
+
+		if ('' === $reference) {
+			return '';
+		}
+
+		if (0 === strpos($reference, 'id:')) {
+			$source_id = (string) absint(substr($reference, 3));
+			return isset($lookup_by_id[ $source_id ]) ? $lookup_by_id[ $source_id ] : '';
+		}
+
+		if (isset($lookup_by_id[ $reference ])) {
+			return $lookup_by_id[ $reference ];
+		}
+
+		if (isset($lookup_by_sku[ $reference ])) {
+			return $lookup_by_sku[ $reference ];
+		}
+
+		return '';
+	}
+
+	protected static function resolve_json_chunk_files($dir_arg = '', $file_arg = '')
+	{
+		$file_arg = trim((string) $file_arg);
+
+		if ('' !== $file_arg) {
+			if (is_readable($file_arg)) {
+				return array($file_arg);
+			}
+
+			$dir = self::resolve_json_output_dir($dir_arg);
+			$path = trailingslashit($dir) . wp_basename($file_arg);
+
+			return is_readable($path) ? array($path) : array();
+		}
+
+		$dir = self::resolve_json_output_dir($dir_arg);
+
+		if (! is_dir($dir)) {
+			return array();
+		}
+
+		$manifest_path = trailingslashit($dir) . 'manifest.json';
+
+		if (is_readable($manifest_path)) {
+			$manifest = self::read_json_chunk_file($manifest_path);
+			$files    = array();
+
+			if (! empty($manifest['files']) && is_array($manifest['files'])) {
+				foreach ($manifest['files'] as $basename) {
+					$path = trailingslashit($dir) . wp_basename($basename);
+					if (is_readable($path)) {
+						$files[] = $path;
+					}
+				}
+			}
+
+			if (! empty($files)) {
+				return $files;
+			}
+		}
+
+		$paths = glob(trailingslashit($dir) . 'woo-products-*.json');
+
+		if (! is_array($paths)) {
+			return array();
+		}
+
+		sort($paths);
+
+		return array_values(
+			array_filter(
+				$paths,
+				function ($path) {
+					return 'woo-products-orphans.json' !== wp_basename($path);
+				}
+			)
+		);
+	}
+
+	protected static function read_json_chunk_file($path)
+	{
+		if (! is_readable($path)) {
+			return null;
+		}
+
+		$decoded = json_decode((string) file_get_contents($path), true);
+
+		return is_array($decoded) ? $decoded : null;
+	}
+
+	protected static function write_json_file($path, $payload)
+	{
+		$json = wp_json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+		if (false === $json || false === file_put_contents($path, $json)) {
+			WP_CLI::error('No pude escribir el archivo JSON: ' . $path);
+		}
+	}
+
+	protected static function import_json_chunk($chunk, $source_label, $update_existing)
+	{
+		$headers            = ! empty($chunk['headers']) && is_array($chunk['headers']) ? $chunk['headers'] : array();
+		$products           = ! empty($chunk['products']) && is_array($chunk['products']) ? $chunk['products'] : array();
+		$parents_and_simples = array();
+		$variations         = array();
+
+		foreach ($products as $product) {
+			if (! empty($product['parent']['merged_row']) && is_array($product['parent']['merged_row'])) {
+				$parents_and_simples[] = $product['parent']['merged_row'];
+			}
+
+			if (empty($product['variations']) || ! is_array($product['variations'])) {
+				continue;
+			}
+
+			foreach ($product['variations'] as $variation) {
+				if (! empty($variation['merged_row']) && is_array($variation['merged_row'])) {
+					$variations[] = $variation['merged_row'];
+				}
+			}
+		}
+
+		$stats    = self::empty_import_stats();
+		$messages = array();
+
+		if (! empty($parents_and_simples)) {
+			$prepared_parents = self::prepare_rows_for_import($headers, $parents_and_simples, false, $update_existing, $source_label);
+			$parent_results   = self::run_importer_for_rows($headers, $prepared_parents['rows'], $update_existing);
+			self::sync_source_keys_for_rows($parents_and_simples);
+
+			$stats = self::merge_import_stats($stats, $parent_results['stats']);
+			$messages = array_merge($messages, $prepared_parents['messages'], $parent_results['messages']);
+
+			$swatch_results = self::sync_swatches_from_rows($parents_and_simples);
+			$stats['swatch_terms_updated'] += $swatch_results['updated_terms'];
+			$messages = array_merge($messages, $swatch_results['messages']);
+		}
+
+		if (! empty($variations)) {
+			$prepared_variations = self::prepare_rows_for_import($headers, $variations, true, $update_existing, $source_label);
+			$variation_results   = self::run_importer_for_rows($headers, $prepared_variations['rows'], $update_existing);
+
+			$stats = self::merge_import_stats($stats, $variation_results['stats']);
+			$messages = array_merge($messages, $prepared_variations['messages'], $variation_results['messages']);
+		}
+
+		return array(
+			'stats'    => $stats,
+			'messages' => array_values(array_unique(array_filter($messages))),
+		);
+	}
+
 	protected static function summarize_csv($path)
 	{
 		$key = md5($path . '|' . filemtime($path) . '|' . filesize($path));
@@ -769,25 +1293,44 @@ class NLK_Woo_CSV_Import
 
 	protected static function get_fallback_lookup($basename)
 	{
-		if (isset(self::$fallback_cache[ $basename ])) {
-			return self::$fallback_cache[ $basename ];
+		return self::get_fallback_lookup_from_path(get_template_directory() . '/' . $basename, $basename);
+	}
+
+	protected static function get_fallback_lookup_from_file($file)
+	{
+		if (! $file || empty($file['path'])) {
+			return array(
+				'by_id'  => array(),
+				'by_sku' => array(),
+			);
 		}
 
-		$path = get_template_directory() . '/' . $basename;
-		if (! is_readable($path)) {
-			self::$fallback_cache[ $basename ] = array();
-			return self::$fallback_cache[ $basename ];
+		return self::get_fallback_lookup_from_path($file['path'], $file['path']);
+	}
+
+	protected static function get_fallback_lookup_from_path($path, $cache_token)
+	{
+		$cache_key = md5('fallback|' . $cache_token . '|' . @filemtime($path) . '|' . @filesize($path));
+
+		if (isset(self::$fallback_cache[ $cache_key ])) {
+			return self::$fallback_cache[ $cache_key ];
 		}
 
-		$headers = self::read_csv_headers($path);
-		$file    = self::open_csv_file($path);
-		$lookup  = array(
+		$lookup = array(
 			'by_id'  => array(),
 			'by_sku' => array(),
 		);
 
+		if (! is_readable($path)) {
+			self::$fallback_cache[ $cache_key ] = $lookup;
+			return $lookup;
+		}
+
+		$headers = self::read_csv_headers($path);
+		$file    = self::open_csv_file($path);
+
 		if (! $file || empty($headers)) {
-			self::$fallback_cache[ $basename ] = $lookup;
+			self::$fallback_cache[ $cache_key ] = $lookup;
 			return $lookup;
 		}
 
@@ -805,6 +1348,7 @@ class NLK_Woo_CSV_Import
 				'name'              => trim((string) self::row_value($row, 'Title')),
 				'description'       => (string) self::row_value($row, 'Content'),
 				'short_description' => (string) self::row_value($row, 'Short Description'),
+				'raw_row'           => $row,
 			);
 
 			$source_id = trim((string) self::row_value($row, 'ID'));
@@ -819,9 +1363,54 @@ class NLK_Woo_CSV_Import
 			}
 		}
 
-		self::$fallback_cache[ $basename ] = $lookup;
+		self::$fallback_cache[ $cache_key ] = $lookup;
 
 		return $lookup;
+	}
+
+	protected static function find_fallback_record_for_row($row, $fallback_lookup)
+	{
+		if (empty($fallback_lookup) || ! is_array($fallback_lookup)) {
+			return null;
+		}
+
+		$source_id = trim((string) self::row_value($row, 'ID'));
+		$sku       = trim((string) self::row_value($row, 'SKU'));
+
+		if ($source_id && isset($fallback_lookup['by_id'][ $source_id ])) {
+			return $fallback_lookup['by_id'][ $source_id ];
+		}
+
+		if ($sku && isset($fallback_lookup['by_sku'][ $sku ])) {
+			return $fallback_lookup['by_sku'][ $sku ];
+		}
+
+		return null;
+	}
+
+	protected static function merge_row_with_fallback_record($row, $fallback_record)
+	{
+		if (! $fallback_record || ! is_array($fallback_record)) {
+			return $row;
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Imágenes')) && ! empty($fallback_record['images'])) {
+			self::set_row_value($row, 'Imágenes', $fallback_record['images']);
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Nombre')) && ! empty($fallback_record['name'])) {
+			self::set_row_value($row, 'Nombre', $fallback_record['name']);
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Descripción')) && ! empty($fallback_record['description'])) {
+			self::set_row_value($row, 'Descripción', $fallback_record['description']);
+		}
+
+		if ('' === trim((string) self::row_value($row, 'Descripción corta')) && ! empty($fallback_record['short_description'])) {
+			self::set_row_value($row, 'Descripción corta', $fallback_record['short_description']);
+		}
+
+		return $row;
 	}
 
 	protected static function find_source_parent_row($file, $reference)
@@ -1228,6 +1817,54 @@ class NLK_Woo_CSV_Import
 			);
 		}
 
+		if (! $update_existing) {
+			return self::run_importer_pass($headers, $rows, false);
+		}
+
+		$create_rows = array();
+		$update_rows = array();
+
+		foreach ($rows as $row) {
+			$local_id = absint(self::row_value($row, 'ID'));
+
+			if ($local_id > 0) {
+				$update_rows[] = $row;
+			} else {
+				$create_rows[] = $row;
+			}
+		}
+
+		$results = array(
+			'stats'    => self::empty_import_stats(),
+			'messages' => array(),
+		);
+
+		if (! empty($create_rows)) {
+			$create_results      = self::run_importer_pass($headers, $create_rows, false);
+			$results['stats']    = self::merge_import_stats($results['stats'], $create_results['stats']);
+			$results['messages'] = array_merge($results['messages'], $create_results['messages']);
+		}
+
+		if (! empty($update_rows)) {
+			$update_results      = self::run_importer_pass($headers, $update_rows, true);
+			$results['stats']    = self::merge_import_stats($results['stats'], $update_results['stats']);
+			$results['messages'] = array_merge($results['messages'], $update_results['messages']);
+		}
+
+		$results['messages'] = array_values(array_unique(array_filter($results['messages'])));
+
+		return $results;
+	}
+
+	protected static function run_importer_pass($headers, $rows, $update_existing)
+	{
+		if (empty($rows)) {
+			return array(
+				'stats'    => self::empty_import_stats(),
+				'messages' => array(),
+			);
+		}
+
 		$temp_headers  = self::build_temp_headers($headers);
 		$temp_file_raw = wp_tempnam('nlk-woo-import');
 		$temp_file     = $temp_file_raw ? $temp_file_raw . '.csv' : '';
@@ -1326,8 +1963,53 @@ class NLK_Woo_CSV_Import
 
 		return array(
 			'stats'    => self::normalize_import_results($raw_results),
-			'messages' => $image_failures,
+			'messages' => array_merge(
+				self::extract_import_result_messages($raw_results),
+				$image_failures
+			),
 		);
+	}
+
+	protected static function extract_import_result_messages($results)
+	{
+		$messages = array();
+		$limit    = 12;
+
+		if (! is_array($results)) {
+			return $messages;
+		}
+
+		foreach (array('failed', 'skipped') as $bucket) {
+			if (empty($results[ $bucket ]) || ! is_array($results[ $bucket ])) {
+				continue;
+			}
+
+			foreach ($results[ $bucket ] as $item) {
+				if (count($messages) >= $limit) {
+					return $messages;
+				}
+
+				if (is_wp_error($item)) {
+					$row_id  = $item->get_error_data('row');
+					$message = $item->get_error_message();
+					$messages[] = trim(
+						sprintf(
+							'Woo %s: %s%s',
+							$bucket,
+							$message,
+							$row_id ? ' | fila: ' . $row_id : ''
+						)
+					);
+					continue;
+				}
+
+				if (is_scalar($item)) {
+					$messages[] = sprintf('Woo %s: %s', $bucket, (string) $item);
+				}
+			}
+		}
+
+		return $messages;
 	}
 
 	protected static function build_temp_headers($headers)
@@ -1519,7 +2201,11 @@ class NLK_Woo_CSV_Import
 
 		foreach (array('imported', 'imported_variations', 'updated', 'failed', 'skipped') as $key) {
 			if (isset($results[ $key ])) {
-				$stats[ $key ] = intval($results[ $key ]);
+				if (is_array($results[ $key ])) {
+					$stats[ $key ] = count($results[ $key ]);
+				} else {
+					$stats[ $key ] = intval($results[ $key ]);
+				}
 			}
 		}
 

@@ -1,0 +1,24 @@
+﻿{
+    "schema_version":  1,
+    "generated_at":  "2026-04-15T17:08:15.0821601Z",
+    "chunk_size":  25,
+    "source_files":  {
+                         "primary":  "D:\\vscode\\nalakalu-theme\\export-2-woo.csv",
+                         "fallback":  "D:\\vscode\\nalakalu-theme\\export-1-woo.csv"
+                     },
+    "files":  [
+                  "woo-products-001.json",
+                  "woo-products-002.json",
+                  "woo-products-003.json",
+                  "woo-products-004.json",
+                  "woo-products-005.json",
+                  "woo-products-006.json",
+                  "woo-products-007.json",
+                  "woo-products-008.json",
+                  "woo-products-009.json",
+                  "woo-products-010.json",
+                  "woo-products-011.json",
+                  "woo-products-012.json"
+              ],
+    "orphan_file":  "woo-products-orphans.json"
+}
