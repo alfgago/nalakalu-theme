@@ -14,17 +14,20 @@ class NLK_Woo_CSV_Import
 	const PAGE_SLUG                 = 'nlk-woo-csv-import';
 	const NONCE_ACTION              = 'nlk_woo_csv_import';
 	const SOURCE_META_KEY           = '_nlk_woo_import_source_id';
+	const SOURCE_SKU_META_KEY       = '_nlk_woo_import_source_sku';
 	const SOURCE_PARENT_META_KEY    = '_nlk_woo_import_source_parent_id';
 	const SOURCE_FILE_META_KEY      = '_nlk_woo_import_source_file';
 	const BRANDS_META_KEY           = '_nlk_woo_import_marcas';
 	const SWATCHES_META_KEY         = 'swatches_attributes';
 	const DEFAULT_BATCH_SIZE        = 30;
 	const SOURCE_ID_META_COLUMN     = 'Meta: _nlk_woo_import_source_id';
+	const SOURCE_SKU_META_COLUMN    = 'Meta: _nlk_woo_import_source_sku';
 	const SOURCE_PARENT_META_COLUMN = 'Meta: _nlk_woo_import_source_parent_id';
 	const SOURCE_FILE_META_COLUMN   = 'Meta: _nlk_woo_import_source_file';
 
 	protected static $source_id_cache = array();
 	protected static $summary_cache   = array();
+	protected static $fallback_cache  = array();
 
 	public static function init()
 	{
@@ -352,6 +355,7 @@ class NLK_Woo_CSV_Import
 		self::include_importer_dependencies();
 
 		$chunk = self::read_csv_chunk($file['path'], $position, $batch_size);
+		$chunk['rows'] = self::supplement_rows_with_fallback_data($chunk['rows'], $file['basename']);
 		$total = self::count_total_rows($file['path']);
 
 		if (empty($chunk['rows'])) {
@@ -386,8 +390,7 @@ class NLK_Woo_CSV_Import
 		if (! empty($parents_and_simples)) {
 			$prepared_parents = self::prepare_rows_for_import($chunk['headers'], $parents_and_simples, false, $update_existing, $file['basename']);
 			$parent_results   = self::run_importer_for_rows($chunk['headers'], $prepared_parents['rows'], $update_existing);
-			self::sync_source_ids_for_rows($parents_and_simples);
-			self::clear_source_cache_for_rows($parents_and_simples);
+			self::sync_source_keys_for_rows($parents_and_simples);
 
 			$stats = self::merge_import_stats($stats, $parent_results['stats']);
 
@@ -582,6 +585,11 @@ class NLK_Woo_CSV_Import
 				$summary['swatch_rows']++;
 			}
 
+			if ('' !== trim((string) self::row_value($row, 'Imágenes'))) {
+				$summary['image_rows']++;
+				continue;
+			}
+
 			if (
 				'' !== trim((string) self::row_value($row, 'Imágenes')) ||
 				'' !== trim((string) self::row_value($row, 'Image URL'))
@@ -680,9 +688,139 @@ class NLK_Woo_CSV_Import
 
 		$file = new SplFileObject($path, 'r');
 		$file->setFlags(SplFileObject::READ_CSV | SplFileObject::DROP_NEW_LINE);
-		$file->setCsvControl(',');
+		$file->setCsvControl(',', '"', '\\');
 
 		return $file;
+	}
+
+	protected static function supplement_rows_with_fallback_data($rows, $primary_basename)
+	{
+		if (empty($rows) || 'export-2-woo.csv' !== $primary_basename) {
+			return $rows;
+		}
+
+		$fallback = self::get_fallback_lookup('export-1-woo.csv');
+
+		if (empty($fallback)) {
+			return $rows;
+		}
+
+		foreach ($rows as $index => $row) {
+			$source_id = trim((string) self::row_value($row, 'ID'));
+			$sku       = trim((string) self::row_value($row, 'SKU'));
+			$matched   = null;
+
+			if ($source_id && isset($fallback['by_id'][ $source_id ])) {
+				$matched = $fallback['by_id'][ $source_id ];
+			} elseif ($sku && isset($fallback['by_sku'][ $sku ])) {
+				$matched = $fallback['by_sku'][ $sku ];
+			}
+
+			if (! $matched) {
+				continue;
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Imágenes')) && ! empty($matched['images'])) {
+				$rows[ $index ]['Imágenes'] = $matched['images'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Descripción')) && ! empty($matched['description'])) {
+				$rows[ $index ]['Descripción'] = $matched['description'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Descripción corta')) && ! empty($matched['short_description'])) {
+				$rows[ $index ]['Descripción corta'] = $matched['short_description'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Imágenes')) && ! empty($matched['images'])) {
+				$rows[ $index ]['Imágenes'] = $matched['images'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Nombre')) && ! empty($matched['name'])) {
+				$rows[ $index ]['Nombre'] = $matched['name'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Descripción')) && ! empty($matched['description'])) {
+				$rows[ $index ]['Descripción'] = $matched['description'];
+			}
+
+			if ('' === trim((string) self::row_value($row, 'Descripción corta')) && ! empty($matched['short_description'])) {
+				$rows[ $index ]['Descripción corta'] = $matched['short_description'];
+			}
+		}
+
+		return $rows;
+	}
+
+	protected static function get_fallback_lookup($basename)
+	{
+		if (isset(self::$fallback_cache[ $basename ])) {
+			return self::$fallback_cache[ $basename ];
+		}
+
+		$path = get_template_directory() . '/' . $basename;
+		if (! is_readable($path)) {
+			self::$fallback_cache[ $basename ] = array();
+			return self::$fallback_cache[ $basename ];
+		}
+
+		$headers = self::read_csv_headers($path);
+		$file    = self::open_csv_file($path);
+		$lookup  = array(
+			'by_id'  => array(),
+			'by_sku' => array(),
+		);
+
+		if (! $file || empty($headers)) {
+			self::$fallback_cache[ $basename ] = $lookup;
+			return $lookup;
+		}
+
+		$file->rewind();
+		$file->fgetcsv();
+
+		while (! $file->eof()) {
+			$row = self::normalize_csv_row($file->fgetcsv(), $headers);
+			if (null === $row) {
+				continue;
+			}
+
+			$record = array(
+				'images'            => self::convert_export1_images($row),
+				'name'              => trim((string) self::row_value($row, 'Title')),
+				'description'       => (string) self::row_value($row, 'Content'),
+				'short_description' => (string) self::row_value($row, 'Short Description'),
+			);
+
+			$source_id = trim((string) self::row_value($row, 'ID'));
+			$sku       = trim((string) self::row_value($row, 'Sku'));
+
+			if ($source_id && ! isset($lookup['by_id'][ $source_id ])) {
+				$lookup['by_id'][ $source_id ] = $record;
+			}
+
+			if ($sku && ! isset($lookup['by_sku'][ $sku ])) {
+				$lookup['by_sku'][ $sku ] = $record;
+			}
+		}
+
+		self::$fallback_cache[ $basename ] = $lookup;
+
+		return $lookup;
+	}
+
+	protected static function convert_export1_images($row)
+	{
+		$images = trim((string) self::row_value($row, 'Image URL'));
+
+		if ('' === $images) {
+			$featured = trim((string) self::row_value($row, 'Image Featured'));
+			return $featured;
+		}
+
+		$parts = array_values(array_filter(array_map('trim', explode('|', $images))));
+
+		return implode(', ', $parts);
 	}
 
 	protected static function normalize_csv_row($row, $headers)
@@ -712,30 +850,38 @@ class NLK_Woo_CSV_Import
 
 	protected static function prepare_rows_for_import($headers, $rows, $is_variation, $update_existing, $source_file)
 	{
-		$prepared = array();
-		$messages = array();
+		$prepared             = array();
+		$messages             = array();
+		$unresolved_variation = array();
 
 		foreach ($rows as $row) {
 			$source_id     = trim((string) self::row_value($row, 'ID'));
+			$source_sku    = trim((string) self::row_value($row, 'SKU'));
 			$source_parent = trim((string) self::row_value($row, 'Superior'));
 			$existing_id   = $update_existing ? self::resolve_existing_target_id($row) : 0;
 			$prepared_row  = $row;
 
 			$prepared_row['ID'] = $existing_id ? (string) $existing_id : '';
 			$prepared_row[ self::SOURCE_ID_META_COLUMN ] = $source_id;
+			$prepared_row[ self::SOURCE_SKU_META_COLUMN ] = $source_sku;
 			$prepared_row[ self::SOURCE_PARENT_META_COLUMN ] = $source_parent;
 			$prepared_row[ self::SOURCE_FILE_META_COLUMN ] = $source_file;
 
 			if ($is_variation) {
-				$local_parent_id = self::find_local_product_id_by_source($source_parent);
+				$local_parent_id = self::find_local_product_id_by_reference($source_parent);
 
 				if (! $local_parent_id) {
-					$sku        = trim((string) self::row_value($row, 'SKU'));
-					$messages[] = sprintf(
-						'Se omitio una variacion%s porque no encontre su padre local para el source ID %s.',
-						$sku ? ' [' . $sku . ']' : '',
-						$source_parent
-					);
+					if (! isset($unresolved_variation[ $source_parent ])) {
+						$unresolved_variation[ $source_parent ] = array(
+							'count' => 0,
+							'skus'  => array(),
+						);
+					}
+
+					$unresolved_variation[ $source_parent ]['count']++;
+					if ($source_sku) {
+						$unresolved_variation[ $source_parent ]['skus'][] = $source_sku;
+					}
 					continue;
 				}
 
@@ -743,6 +889,18 @@ class NLK_Woo_CSV_Import
 			}
 
 			$prepared[] = $prepared_row;
+		}
+
+		if (! empty($unresolved_variation)) {
+			foreach ($unresolved_variation as $parent_ref => $data) {
+				$sample_skus = array_slice(array_values(array_unique($data['skus'])), 0, 6);
+				$messages[]  = sprintf(
+					'Se omitieron %d variaciones porque no encontre su padre local para la referencia %s%s.',
+					intval($data['count']),
+					$parent_ref !== '' ? $parent_ref : '(vacio)',
+					! empty($sample_skus) ? ' | SKUs: ' . implode(', ', $sample_skus) : ''
+				);
+			}
 		}
 
 		return array(
@@ -757,14 +915,14 @@ class NLK_Woo_CSV_Import
 		$sku       = trim((string) self::row_value($row, 'SKU'));
 
 		if ($source_id) {
-			$matched = self::find_local_product_id_by_source($source_id);
+			$matched = self::find_local_product_id_by_reference($source_id);
 			if ($matched) {
 				return $matched;
 			}
 		}
 
 		if ($sku) {
-			$matched = wc_get_product_id_by_sku($sku);
+			$matched = self::find_local_product_id_by_reference($sku);
 			if ($matched) {
 				return intval($matched);
 			}
@@ -889,6 +1047,7 @@ class NLK_Woo_CSV_Import
 		$temp_headers = $headers;
 		$extras       = array(
 			self::SOURCE_ID_META_COLUMN,
+			self::SOURCE_SKU_META_COLUMN,
 			self::SOURCE_PARENT_META_COLUMN,
 			self::SOURCE_FILE_META_COLUMN,
 		);
@@ -904,10 +1063,14 @@ class NLK_Woo_CSV_Import
 
 	protected static function build_mapping($headers)
 	{
-		$mapping = array();
+		$mapping = array(
+			'from' => array(),
+			'to'   => array(),
+		);
 
 		foreach ($headers as $header) {
-			$mapping[] = self::map_header_to_import_key($header);
+			$mapping['from'][] = $header;
+			$mapping['to'][]   = self::map_header_to_import_key($header);
 		}
 
 		return $mapping;
@@ -917,7 +1080,13 @@ class NLK_Woo_CSV_Import
 	{
 		$header     = self::remove_utf8_bom(trim((string) $header));
 		$normalized = self::normalize_string($header);
-		$default    = self::default_header_mapping();
+		$mapped     = self::lookup_default_header_mapping($normalized);
+
+		if ('' !== $mapped) {
+			return $mapped;
+		}
+
+		$default = self::default_header_mapping();
 
 		if (isset($default[ $normalized ])) {
 			return $default[ $normalized ];
@@ -956,6 +1125,54 @@ class NLK_Woo_CSV_Import
 		}
 
 		return '';
+	}
+
+	protected static function lookup_default_header_mapping($normalized)
+	{
+		$map = array(
+			'id' => 'id',
+			'tipo' => 'type',
+			'sku' => 'sku',
+			'gtin upc ean o isbn' => 'global_unique_id',
+			'nombre' => 'name',
+			'publicado' => 'published',
+			'esta destacado' => 'featured',
+			'visibilidad en el catalogo' => 'catalog_visibility',
+			'descripcion corta' => 'short_description',
+			'descripcion' => 'description',
+			'dia en que empieza el precio rebajado' => 'date_on_sale_from',
+			'dia en que termina el precio rebajado' => 'date_on_sale_to',
+			'estado del impuesto' => 'tax_status',
+			'clase de impuesto' => 'tax_class',
+			'existencias' => 'stock_status',
+			'inventario' => 'stock_quantity',
+			'cantidad de bajo inventario' => 'low_stock_amount',
+			'permitir reservas de productos agotados' => 'backorders',
+			'vendido individualmente' => 'sold_individually',
+			'peso kg' => 'weight',
+			'longitud cm' => 'length',
+			'anchura cm' => 'width',
+			'altura cm' => 'height',
+			'permitir valoraciones de clientes' => 'reviews_allowed',
+			'nota de compra' => 'purchase_note',
+			'precio rebajado' => 'sale_price',
+			'precio normal' => 'regular_price',
+			'categorias' => 'category_ids',
+			'etiquetas' => 'tag_ids',
+			'clase de envio' => 'shipping_class_id',
+			'imagenes' => 'images',
+			'limite de descargas' => 'download_limit',
+			'dias de caducidad de la descarga' => 'download_expiry',
+			'superior' => 'parent_id',
+			'productos agrupados' => 'grouped_products',
+			'ventas dirigidas' => 'upsell_ids',
+			'ventas cruzadas' => 'cross_sell_ids',
+			'url externa' => 'product_url',
+			'texto del boton' => 'button_text',
+			'posicion' => 'menu_order',
+		);
+
+		return isset($map[ $normalized ]) ? $map[ $normalized ] : '';
 	}
 
 	protected static function default_header_mapping()
@@ -1171,7 +1388,7 @@ class NLK_Woo_CSV_Import
 
 			// Fall back to the meta query (handles products imported without a SKU).
 			if (! $product_id) {
-				$product_id = self::find_local_product_id_by_source($source_id);
+				$product_id = self::find_local_product_id_by_reference($source_id);
 			}
 
 			if ($product_id > 0) {
@@ -1181,33 +1398,87 @@ class NLK_Woo_CSV_Import
 		}
 	}
 
-	protected static function find_local_product_id_by_source($source_id)
+	protected static function sync_source_keys_for_rows($rows)
 	{
-		$source_id = trim((string) $source_id);
+		foreach ($rows as $row) {
+			$source_id  = trim((string) self::row_value($row, 'ID'));
+			$source_sku = trim((string) self::row_value($row, 'SKU'));
 
-		if ('' === $source_id) {
+			if ('' === $source_id && '' === $source_sku) {
+				continue;
+			}
+
+			$product_id = 0;
+
+			if ('' !== $source_sku) {
+				$product_id = self::find_local_product_id_by_reference($source_sku);
+			}
+
+			if (! $product_id && '' !== $source_id) {
+				$product_id = self::find_local_product_id_by_reference($source_id);
+			}
+
+			if ($product_id > 0) {
+				if ('' !== $source_id) {
+					update_post_meta($product_id, self::SOURCE_META_KEY, $source_id);
+					self::$source_id_cache[ $source_id ] = $product_id;
+				}
+
+				if ('' !== $source_sku) {
+					update_post_meta($product_id, self::SOURCE_SKU_META_KEY, $source_sku);
+					self::$source_id_cache[ $source_sku ] = $product_id;
+				}
+			}
+		}
+	}
+
+	protected static function find_local_product_id_by_reference($reference)
+	{
+		$reference = trim((string) $reference);
+
+		if ('' === $reference) {
 			return 0;
 		}
 
-		if (isset(self::$source_id_cache[ $source_id ])) {
-			return self::$source_id_cache[ $source_id ];
+		if (0 === strpos($reference, 'id:')) {
+			$local_id = absint(substr($reference, 3));
+			if ($local_id && wc_get_product($local_id)) {
+				return $local_id;
+			}
 		}
 
-		global $wpdb;
+		if (isset(self::$source_id_cache[ $reference ])) {
+			return self::$source_id_cache[ $reference ];
+		}
 
-		$product_id = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s ORDER BY post_id DESC LIMIT 1",
-				self::SOURCE_META_KEY,
-				$source_id
-			)
-		);
+		$product_id = self::find_local_product_id_by_meta(self::SOURCE_META_KEY, $reference);
+
+		if (! $product_id) {
+			$product_id = self::find_local_product_id_by_meta(self::SOURCE_SKU_META_KEY, $reference);
+		}
+
+		if (! $product_id) {
+			$product_id = (int) wc_get_product_id_by_sku($reference);
+		}
 
 		if ($product_id > 0) {
-			self::$source_id_cache[ $source_id ] = $product_id;
+			self::$source_id_cache[ $reference ] = $product_id;
 		}
 
 		return $product_id;
+	}
+
+	protected static function find_local_product_id_by_meta($meta_key, $meta_value)
+	{
+		global $wpdb;
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s ORDER BY post_id DESC LIMIT 1",
+				$meta_key,
+				$meta_value
+			)
+		);
 	}
 
 	protected static function clear_source_cache_for_rows($rows)
@@ -1234,11 +1505,21 @@ class NLK_Woo_CSV_Import
 	{
 		$value = self::remove_utf8_bom((string) $value);
 
+		if (function_exists('iconv')) {
+			$converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+			if (false !== $converted) {
+				$value = $converted;
+			}
+		}
+
 		if (function_exists('mb_strtolower')) {
 			$value = mb_strtolower($value, 'UTF-8');
 		} else {
 			$value = strtolower($value);
 		}
+
+		$value = preg_replace('/[^a-z0-9]+/', ' ', $value);
+		$value = preg_replace('/\s+/', ' ', $value);
 
 		return trim($value);
 	}
