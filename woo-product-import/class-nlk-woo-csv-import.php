@@ -781,10 +781,14 @@ class NLK_Woo_CSV_Import
 			);
 		}
 
-		$temp_headers = self::build_temp_headers($headers);
-		$temp_file    = wp_tempnam('nlk-woo-import.csv');
+		$temp_headers  = self::build_temp_headers($headers);
+		$temp_file_raw = wp_tempnam('nlk-woo-import');
+		$temp_file     = $temp_file_raw ? $temp_file_raw . '.csv' : '';
 
-		if (! $temp_file) {
+		if (! $temp_file_raw || ! rename($temp_file_raw, $temp_file)) {
+			if ($temp_file_raw) {
+				wp_delete_file($temp_file_raw);
+			}
 			return array(
 				'stats'    => array_merge(
 					self::empty_import_stats(),
