@@ -1188,10 +1188,11 @@ if ( ! function_exists('nlk_shop__get_pagination_html') ) {
 function nlk_shop_filter_breadcrumbs() {
   check_ajax_referer('nlk_shop_nonce', 'nonce');
 
-  $term_id  = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
-  $page     = isset($_POST['page']) ? max(1, absint($_POST['page'])) : 1;
-  $per_page = isset($_POST['per_page']) ? max(1, absint($_POST['per_page'])) : 12;
-  $order    = isset($_POST['order']) ? sanitize_text_field(wp_unslash($_POST['order'])) : 'stock';
+  $term_id      = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
+  $showroom_id  = isset($_POST['showroom_id']) ? absint($_POST['showroom_id']) : 0;
+  $page         = isset($_POST['page']) ? max(1, absint($_POST['page'])) : 1;
+  $per_page     = isset($_POST['per_page']) ? max(1, absint($_POST['per_page'])) : 12;
+  $order        = isset($_POST['order']) ? sanitize_text_field(wp_unslash($_POST['order'])) : 'stock';
 
   $args = [
     'post_type'      => 'product',
@@ -1200,12 +1201,29 @@ function nlk_shop_filter_breadcrumbs() {
     'paged'          => $page,
   ];
 
+  $tax_query = [];
+
   if ($term_id) {
-    $args['tax_query'] = [[
+    $tax_query[] = [
       'taxonomy' => 'product_cat',
       'field'    => 'term_id',
       'terms'    => [$term_id],
-    ]];
+    ];
+  }
+
+  if ($showroom_id) {
+    $tax_query[] = [
+      'taxonomy' => 'showroom',
+      'field'    => 'term_id',
+      'terms'    => [$showroom_id],
+    ];
+  }
+
+  if (!empty($tax_query)) {
+    if (count($tax_query) > 1) {
+      $tax_query['relation'] = 'AND';
+    }
+    $args['tax_query'] = $tax_query;
   }
 
   $args = nlk_shop__apply_order_to_args($args, $order);
@@ -1217,15 +1235,15 @@ function nlk_shop_filter_breadcrumbs() {
   $count         = (int) ($q->found_posts ?? 0);
 
   wp_send_json_success([
-    'title'            => $title_raw,
-    'count_label'      => nlk_shop__get_count_label($count),
-    'grid_html'        => nlk_shop__get_grid_html($q),
-    'pagination_html'  => nlk_shop__get_pagination_html($page, (int) $q->max_num_pages),
-    'active_term_id'   => $term_id,
-    'order'            => $order,
-    'breadcrumbs_html' => nlk_shop__get_breadcrumbs_html($term_id),
+    'title'              => $title_raw,
+    'count_label'        => nlk_shop__get_count_label($count),
+    'grid_html'          => nlk_shop__get_grid_html($q),
+    'pagination_html'    => nlk_shop__get_pagination_html($page, (int) $q->max_num_pages),
+    'active_term_id'     => $term_id,
+    'active_showroom_id' => $showroom_id,
+    'order'              => $order,
+    'breadcrumbs_html'   => nlk_shop__get_breadcrumbs_html($term_id),
   ]);
 }
-
 add_action('wp_ajax_nlk_shop_filter_breadcrumbs', 'nlk_shop_filter_breadcrumbs');
 add_action('wp_ajax_nopriv_nlk_shop_filter_breadcrumbs', 'nlk_shop_filter_breadcrumbs');

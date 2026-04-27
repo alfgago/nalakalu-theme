@@ -1,6 +1,6 @@
 <?php
 /**
- * Hotspots (LookBook) – Carrusel + Testimonios
+ * Hotspots (LookBook) – Carrusel + Testimonios + Galería lateral
  */
 
 if (!defined('ABSPATH')) exit;
@@ -61,7 +61,60 @@ if (!function_exists('nlhs_product_bits')) {
   }
 }
 
-/* Extrae src confiable desde el HTML del plugin */
+if (!function_exists('nlhs_gallery_bits')) {
+  function nlhs_gallery_bits($gallery_field){
+    $out = [];
+
+    if (empty($gallery_field) || !is_array($gallery_field)) {
+      return $out;
+    }
+
+    foreach ($gallery_field as $img) {
+      $id  = 0;
+      $url = '';
+      $alt = '';
+
+      if (is_numeric($img)) {
+        $id  = (int) $img;
+        $url = wp_get_attachment_image_url($id, 'large');
+        $alt = get_post_meta($id, '_wp_attachment_image_alt', true);
+
+      } elseif (is_array($img)) {
+        if (!empty($img['ID'])) {
+          $id = (int) $img['ID'];
+        }
+
+        if (!empty($img['sizes']['large'])) {
+          $url = $img['sizes']['large'];
+        } elseif (!empty($img['url'])) {
+          $url = $img['url'];
+        }
+
+        if (!empty($img['alt'])) {
+          $alt = $img['alt'];
+        } elseif ($id) {
+          $alt = get_post_meta($id, '_wp_attachment_image_alt', true);
+        }
+
+      } elseif (is_object($img) && !empty($img->ID)) {
+        $id  = (int) $img->ID;
+        $url = wp_get_attachment_image_url($id, 'large');
+        $alt = get_post_meta($id, '_wp_attachment_image_alt', true);
+      }
+
+      if ($url) {
+        $out[] = [
+          'id'  => $id,
+          'url' => $url,
+          'alt' => $alt,
+        ];
+      }
+    }
+
+    return $out;
+  }
+}
+
 if (!function_exists('nlhs_extract_main_img_src')) {
   function nlhs_extract_main_img_src($html){
     if (preg_match('/<img[^>]*class="[^"]*wlb-image[^"]*"[^>]*\s(?:src|data-src|data-lazy|data-original)\s*=\s*"([^"]+)"/i', $html, $m)) {
@@ -81,6 +134,44 @@ if (!function_exists('nlhs_extract_main_img_src')) {
     }
 
     return '';
+  }
+}
+
+if (!function_exists('nlhs_resolve_related_id')) {
+  function nlhs_resolve_related_id($rel){
+    if (empty($rel)) return 0;
+
+    if (is_numeric($rel)) {
+      return (int) $rel;
+    }
+
+    if (is_object($rel) && isset($rel->ID)) {
+      return (int) $rel->ID;
+    }
+
+    if (is_array($rel)) {
+      if (isset($rel['ID']) && is_numeric($rel['ID'])) {
+        return (int) $rel['ID'];
+      }
+
+      foreach ($rel as $item) {
+        $id = nlhs_resolve_related_id($item);
+        if ($id) return $id;
+      }
+    }
+
+    return 0;
+  }
+}
+
+if (!function_exists('nlhs_has_info_row')) {
+  function nlhs_has_info_row($row){
+    if (!is_array($row)) return false;
+    if (!empty($row['nombre'])) return true;
+    if (!empty($row['rol'])) return true;
+    if (!empty($row['contenido'])) return true;
+    if (!empty($row['galeria']) && is_array($row['galeria'])) return true;
+    return false;
   }
 }
 
@@ -111,38 +202,40 @@ foreach ($lookbook_ids as $lb_id) {
   if (is_array($grp) && isset($grp['testimonios']) && is_array($grp['testimonios'])) {
     $t_rows = $grp['testimonios'];
   } else {
-    $t_rows = get_field('testimonios', $lb_id);
+    $tmp = get_field('testimonios', $lb_id);
+    if (is_array($tmp)) {
+      $t_rows = $tmp;
+    }
   }
 
-  $tmap = []; // pid => [nombre, rol, contenido]
-  $pmap = []; // pid => product bits
+  $imap = []; // pid => [pid, nombre, rol, contenido, galeria]
+  $pmap = []; // pid => product bits (solo para modal mobile)
+  $first_info = [
+    'pid'       => 0,
+    'nombre'    => '',
+    'rol'       => '',
+    'contenido' => '',
+    'galeria'   => [],
+  ];
 
   if (is_array($t_rows)) {
     foreach ($t_rows as $row) {
-      $rel = $row['producto_asociado'] ?? 0;
-      $pid = 0;
+      $pid = nlhs_resolve_related_id($row['producto_asociado'] ?? 0);
 
-      if (is_array($rel)) {
-        if (isset($rel[0])) {
-          $first = $rel[0];
-          if (is_numeric($first)) $pid = (int)$first;
-          elseif (is_object($first) && isset($first->ID)) $pid = (int)$first->ID;
-          elseif (is_array($first) && isset($first['ID'])) $pid = (int)$first['ID'];
-        } elseif (isset($rel['ID'])) {
-          $pid = (int)$rel['ID'];
-        }
-      } elseif (is_object($rel) && isset($rel->ID)) {
-        $pid = (int)$rel->ID;
-      } elseif (is_numeric($rel)) {
-        $pid = (int)$rel;
+      $info = [
+        'pid'       => $pid,
+        'nombre'    => (string)($row['nombre'] ?? ''),
+        'rol'       => (string)($row['rol_testimonial'] ?? ''),
+        'contenido' => (string)($row['testimonio_content'] ?? ''),
+        'galeria'   => nlhs_gallery_bits($row['galeria'] ?? []),
+      ];
+
+      if (!nlhs_has_info_row($first_info) && nlhs_has_info_row($info)) {
+        $first_info = $info;
       }
 
       if ($pid) {
-        $tmap[$pid] = [
-          'nombre'    => (string)($row['nombre'] ?? ''),
-          'rol'       => (string)($row['rol_testimonial'] ?? ''),
-          'contenido' => (string)($row['testimonio_content'] ?? ''),
-        ];
+        $imap[$pid] = $info;
 
         if (!isset($pmap[$pid])) {
           $pmap[$pid] = nlhs_product_bits($pid);
@@ -151,7 +244,7 @@ foreach ($lookbook_ids as $lb_id) {
     }
   }
 
-  /* Solo detectar IDs reales de producto desde el HTML */
+  /* Detectar IDs reales de producto desde el HTML */
   $product_ids_from_html = [];
 
   if (preg_match_all('/data-pid="(\d+)"/i', $lookbook_html, $m1)) {
@@ -171,44 +264,29 @@ foreach ($lookbook_ids as $lb_id) {
   }
 
   $slides[] = [
-    'id'   => $lb_id,
-    'html' => $lookbook_html,
-    'tmap' => $tmap,
-    'pmap' => $pmap,
+    'id'        => $lb_id,
+    'html'      => $lookbook_html,
+    'imap'      => $imap,
+    'pmap'      => $pmap,
+    'firstinfo' => $first_info,
   ];
 }
 
 /* Estado inicial */
-$init_name = $init_role = $init_quote = '';
-$init_img = $init_pname = $init_price = $init_link = '';
+$init_name    = '';
+$init_role    = '';
+$init_quote   = '';
+$init_gallery = [];
 
 if (!empty($slides)) {
-  $first = $slides[0];
-  $seed  = 0;
+  $first_slide = $slides[0];
+  $first_info  = $first_slide['firstinfo'] ?? [];
 
-  if (!empty($first['tmap'])) {
-    $keys = array_keys($first['tmap']);
-    $seed = (int) reset($keys);
-  }
-
-  if (!$seed && !empty($first['pmap'])) {
-    $keys = array_keys($first['pmap']);
-    $seed = (int) reset($keys);
-  }
-
-  if ($seed) {
-    if (isset($first['tmap'][$seed])) {
-      $init_name  = $first['tmap'][$seed]['nombre'] ?? '';
-      $init_role  = $first['tmap'][$seed]['rol'] ?? '';
-      $init_quote = $first['tmap'][$seed]['contenido'] ?? '';
-    }
-
-    if (isset($first['pmap'][$seed])) {
-      $init_img   = $first['pmap'][$seed]['img_url'] ?? '';
-      $init_pname = $first['pmap'][$seed]['name'] ?? '';
-      $init_price = $first['pmap'][$seed]['price_html'] ?? '';
-      $init_link  = $first['pmap'][$seed]['permalink'] ?? '';
-    }
+  if (nlhs_has_info_row($first_info)) {
+    $init_name    = $first_info['nombre'] ?? '';
+    $init_role    = $first_info['rol'] ?? '';
+    $init_quote   = $first_info['contenido'] ?? '';
+    $init_gallery = is_array($first_info['galeria'] ?? null) ? $first_info['galeria'] : [];
   }
 }
 ?>
@@ -229,35 +307,42 @@ if (!empty($slides)) {
           <div class="testimonial">
             <h2 class="font-heading-4" data-hs-tname><?php echo esc_html($init_name); ?></h2>
             <p class="role font-overline" data-hs-trole><?php echo esc_html($init_role); ?></p>
-            <p class="font-body-medium-light testimonial-text" data-hs-ttext><?php echo wp_kses_post($init_quote); ?></p>
+            <div class="font-body-medium-light testimonial-text" data-hs-ttext><?php echo wp_kses_post($init_quote); ?></div>
           </div>
 
-          <div class="product-card">
-            <a data-hs-plink href="<?php echo esc_url($init_link ?: '#'); ?>" aria-label="Ver producto">
-              <img
-                src="<?php echo esc_url($init_img ?: ''); ?>"
-                alt=""
-                class="product-image"
-                data-hs-pimg
-              >
-            </a>
-
-            <div class="product-info">
-              <div class="product-details">
-                <a
-                  data-hs-pname
-                  class="hs-pname-link font-button"
-                  href="<?php echo esc_url($init_link ?: '#'); ?>"
-                >
-                  <?php echo esc_html($init_pname); ?>
-                </a>
-
-                <p class="font-button" data-hs-pvariant></p>
+          <div class="hs-side-gallery" data-hs-gallery-root>
+            <div class="hs-side-gallery__viewport">
+              <div class="hs-side-gallery__track" data-hs-gallery-track>
+                <?php if (!empty($init_gallery)) : ?>
+                  <?php foreach ($init_gallery as $gi => $gimg) : ?>
+                    <div class="hs-side-gallery__slide<?php echo $gi === 0 ? ' is-active' : ''; ?>">
+                      <img
+                        src="<?php echo esc_url($gimg['url']); ?>"
+                        alt="<?php echo esc_attr($gimg['alt'] ?? ''); ?>"
+                        class="hs-side-gallery__img"
+                        loading="lazy"
+                      >
+                    </div>
+                  <?php endforeach; ?>
+                <?php else : ?>
+                  <div class="hs-side-gallery__slide is-active">
+                    <div class="hs-side-gallery__empty"></div>
+                  </div>
+                <?php endif; ?>
               </div>
+            </div>
 
-              <div class="product-price font-overline" data-hs-pprice>
-                <?php echo $init_price; ?>
-              </div>
+            <div class="hs-side-gallery__dots" data-hs-gallery-dots>
+              <?php if (!empty($init_gallery) && count($init_gallery) > 1) : ?>
+                <?php foreach ($init_gallery as $gi => $gimg) : ?>
+                  <button
+                    type="button"
+                    class="hs-side-gallery__dot<?php echo $gi === 0 ? ' is-active' : ''; ?>"
+                    data-hs-gallery-dot="<?php echo esc_attr($gi); ?>"
+                    aria-label="Ver imagen <?php echo esc_attr($gi + 1); ?>"
+                  ></button>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -271,8 +356,9 @@ if (!empty($slides)) {
                 <div
                   class="carousel-slide<?php echo $i === 0 ? ' is-active' : ''; ?>"
                   data-lbid="<?php echo esc_attr($s['id']); ?>"
-                  data-tmap="<?php echo esc_attr(base64_encode(wp_json_encode($s['tmap']))); ?>"
+                  data-imap="<?php echo esc_attr(base64_encode(wp_json_encode($s['imap']))); ?>"
                   data-pmap="<?php echo esc_attr(base64_encode(wp_json_encode($s['pmap']))); ?>"
+                  data-firstinfo="<?php echo esc_attr(base64_encode(wp_json_encode($s['firstinfo']))); ?>"
                 >
                   <?php echo $s['html']; ?>
                 </div>
@@ -333,459 +419,208 @@ if (!empty($slides)) {
     </div>
   </div>
 </section>
+
 <script>
-  (function () {
+(function() {
   'use strict';
-
-  function matches(el, sel) {
-    if (!el || !sel) return false;
-    var fn = el.matches || el.webkitMatchesSelector || el.msMatchesSelector;
-    return fn ? fn.call(el, sel) : false;
-  }
-
-  function closest(el, sel) {
-    while (el && el !== document) {
-      if (matches(el, sel)) return el;
-      el = el.parentNode;
-    }
-    return null;
-  }
-
-  function qs(scope, sel) {
-    return scope ? scope.querySelector(sel) : null;
-  }
-
-  function qsa(scope, sel) {
-    return scope ? Array.prototype.slice.call(scope.querySelectorAll(sel)) : [];
-  }
-
-  function toInt(v) {
-    var n = parseInt(v || '0', 10);
-    return isNaN(n) ? 0 : n;
-  }
-
-  function safeJSON64(str) {
-    try {
-      if (!str) return {};
-      return JSON.parse(window.atob(str)) || {};
-    } catch (e) {
-      console.warn('[HS] JSON64 parse error', e, str);
-      return {};
-    }
-  }
-
-  function getMaps(slide) {
-    if (!slide) return { tmap: {}, pmap: {} };
-
-    return {
-      tmap: safeJSON64(slide.getAttribute('data-tmap')),
-      pmap: safeJSON64(slide.getAttribute('data-pmap'))
-    };
-  }
-
-  function getSeedPid(slide) {
-    var maps = getMaps(slide);
-
-    var tKeys = Object.keys(maps.tmap || {}).filter(function (k) {
-      var t = maps.tmap[k] || {};
-      return !!(t.nombre || t.rol || t.contenido);
-    });
-    if (tKeys.length) return toInt(tKeys[0]);
-
-    var pKeys = Object.keys(maps.pmap || {}).filter(function (k) {
-      var p = maps.pmap[k] || {};
-      return !!(p.name || p.img_url || p.permalink || p.price_html);
-    });
-    if (pKeys.length) return toInt(pKeys[0]);
-
-    return 0;
-  }
-
-  function initHotspots(root) {
-    if (!root || root.dataset.hsInit === '1') return;
-    root.dataset.hsInit = '1';
-
-    var track      = qs(root, '[data-hs-track]');
-    var dotsC      = qs(root, '[data-hs-dots]');
-    var thumbsWrap = qs(root, '[data-hs-thumbs]');
-
-    var tName    = qs(root, '[data-hs-tname]');
-    var tRole    = qs(root, '[data-hs-trole]');
-    var tText    = qs(root, '[data-hs-ttext]');
-
-    var pImg     = qs(root, '[data-hs-pimg]');
-    var pName    = qs(root, '[data-hs-pname]');
-    var pPrice   = qs(root, '[data-hs-pprice]');
-    var pLink    = qs(root, '[data-hs-plink]');
-    var pVariant = qs(root, '[data-hs-pvariant]');
-
+  
+  function qs(el, sel) { return el ? el.querySelector(sel) : null; }
+  function qsa(el, sel) { return el ? Array.from(el.querySelectorAll(sel)) : []; }
+  
+  function init(root) {
+    console.log('🔥 Hotspots completo inicializando...');
+    
+    // Elementos principales
+    var track = qs(root, '[data-hs-track]');
     var slides = qsa(root, '.carousel-slide');
     var thumbs = qsa(root, '.thumbnail');
-    var navBtns = qsa(root, '[data-hs-nav]');
-
-    if (!track || !slides.length) {
-      console.warn('[HS] no track or no slides', root);
-      return;
+    var prevBtns = qsa(root, '[data-hs-nav="prev"]');
+    var nextBtns = qsa(root, '[data-hs-nav="next"]');
+    var dotsBox = qs(root, '[data-hs-dots]');
+    
+    // Testimonio IZQUIERDA
+    var tName = qs(root, '[data-hs-tname]');
+    var tRole = qs(root, '[data-hs-trole]');
+    var tText = qs(root, '[data-hs-ttext]');
+    
+    // Galería IZQUIERDA
+    var galleryRoot = qs(root, '[data-hs-gallery-root]');
+    var galleryTrack = qs(root, '[data-hs-gallery-track]');
+    var galleryDots = qs(root, '[data-hs-gallery-dots]');
+    
+    if (!track || slides.length === 0) return;
+    
+    var currentSlide = 0;
+    var currentGallery = 0;
+    
+    // ===== 1. CARRUSEL PRINCIPAL =====
+    function goToSlide(index) {
+      if (index < 0) index = slides.length - 1;
+      if (index >= slides.length) index = 0;
+      
+      currentSlide = index;
+      var slideWidth = track.offsetWidth;
+      track.style.transform = `translateX(-${currentSlide * slideWidth}px)`;
+      
+      // Activar slide y thumbs
+      slides.forEach((s, i) => s.classList.toggle('is-active', i === currentSlide));
+      thumbs.forEach((t, i) => t.classList.toggle('active', i === currentSlide));
+      
+      // ACTUALIZAR TESTIMONIO + GALERÍA
+      updateLeftPanel(slides[currentSlide]);
     }
-
-    console.log('[HS] init ok', {
-      root: root,
-      slides: slides.length,
-      thumbs: thumbs.length,
-      navBtns: navBtns.length
-    });
-
-    var mq = window.matchMedia ? window.matchMedia('(max-width: 768px)') : null;
-    var isMobile = mq ? mq.matches : (window.innerWidth <= 768);
-
-    function syncMobile() {
-      isMobile = mq ? mq.matches : (window.innerWidth <= 768);
-    }
-
-    if (mq) {
-      if (mq.addEventListener) mq.addEventListener('change', syncMobile);
-      else if (mq.addListener) mq.addListener(syncMobile);
-    }
-
-    if (thumbsWrap) {
-      thumbsWrap.style.position = 'relative';
-      thumbsWrap.style.zIndex = '10002';
-      thumbsWrap.style.pointerEvents = 'auto';
-    }
-
-    qsa(root, '.thumbnail, .thumbnail img, .nav-buttons, .nav-btn').forEach(function (el) {
-      el.style.pointerEvents = 'auto';
-    });
-
-    var currentIndex = 0;
-    var dots = [];
-
-    var modal = qs(root, '.hs-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.className = 'hs-modal';
-      modal.innerHTML =
-        '<div class="hs-modal__backdrop" data-close></div>' +
-        '<div class="hs-modal__sheet" role="dialog" aria-modal="true" aria-label="Producto">' +
-          '<div class="hs-modal__top">' +
-            '<div class="font-overline">Producto</div>' +
-            '<button class="hs-modal__close" type="button" aria-label="Cerrar" data-close>✕</button>' +
-          '</div>' +
-          '<a data-mlink href="#" aria-label="Ver producto">' +
-            '<img class="hs-modal__img" data-mimg src="" alt="">' +
-          '</a>' +
-          '<div class="hs-modal__info">' +
-            '<a class="hs-modal__name font-button" data-mname href="#"></a>' +
-            '<div class="font-overline" data-mprice></div>' +
-          '</div>' +
-          '<a class="hs-modal__cta font-button" data-mcta href="#">Ver producto</a>' +
-        '</div>';
-
-      root.appendChild(modal);
-    }
-
-    var mImg   = qs(modal, '[data-mimg]');
-    var mName  = qs(modal, '[data-mname]');
-    var mPrice = qs(modal, '[data-mprice]');
-    var mLink  = qs(modal, '[data-mlink]');
-    var mCta   = qs(modal, '[data-mcta]');
-
-    function closeModal() {
-      modal.classList.remove('is-open');
-      document.documentElement.classList.remove('hs-modal-open');
-      document.body.classList.remove('hs-modal-open');
-    }
-
-    function openModalWithProduct(p) {
-      if (!p) return;
-
-      if (mImg) {
-        if (p.img_url) mImg.src = p.img_url;
-        else mImg.removeAttribute('src');
-      }
-
-      if (mName) {
-        mName.textContent = p.name || '';
-        if (p.permalink) mName.setAttribute('href', p.permalink);
-        else mName.removeAttribute('href');
-      }
-
-      if (mPrice) mPrice.innerHTML = p.price_html || '';
-
-      var href = p.permalink || '#';
-      if (mLink) mLink.setAttribute('href', href);
-      if (mCta)  mCta.setAttribute('href', href);
-
-      modal.classList.add('is-open');
-      document.documentElement.classList.add('hs-modal-open');
-      document.body.classList.add('hs-modal-open');
-    }
-
-    modal.addEventListener('click', function (e) {
-      var t = e.target;
-      if (t && t.getAttribute && t.getAttribute('data-close') !== null) {
-        closeModal();
-      }
-    });
-
-    function rebuildDots() {
-      dots = [];
-      if (!dotsC) return;
-
-      dotsC.innerHTML = '';
-
-      slides.forEach(function (_, i) {
-        var d = document.createElement('div');
-        d.className = 'dot' + (i === currentIndex ? ' active' : '');
-        d.setAttribute('data-index', String(i));
-
-        d.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('[HS] dot click', i);
-          goTo(i);
-        });
-
-        dotsC.appendChild(d);
-        dots.push(d);
-      });
-    }
-
-    function updatePanels(slide, pid) {
+    
+    // ===== 2. TESTIMONIO + GALERÍA IZQUIERDA =====
+    function updateLeftPanel(slide) {
       if (!slide) return;
-
-      var maps = getMaps(slide);
-      var tmap = maps.tmap || {};
-      var pmap = maps.pmap || {};
-
-      var usePid = pid;
-      if (!usePid || (!tmap[String(usePid)] && !pmap[String(usePid)])) {
-        usePid = getSeedPid(slide);
-      }
-
-      var t = tmap[String(usePid)] || {};
-      var p = pmap[String(usePid)] || {};
-
-      if (tName) tName.textContent = t.nombre || '';
-      if (tRole) tRole.textContent = t.rol || '';
-      if (tText) tText.innerHTML = t.contenido || '';
-
-      if (pImg) {
-        if (p.img_url) pImg.src = p.img_url;
-        else pImg.removeAttribute('src');
-      }
-
-      if (pName) {
-        pName.textContent = p.name || '';
-        if (p.permalink) pName.href = p.permalink;
-        else pName.removeAttribute('href');
-      }
-
-      if (pLink) {
-        if (p.permalink) pLink.href = p.permalink;
-        else pLink.removeAttribute('href');
-      }
-
-      if (pPrice) pPrice.innerHTML = p.price_html || '';
-      if (pVariant) pVariant.textContent = '';
-    }
-
-    function initFirstMarker(slide) {
-      if (!slide) return;
-
-      var maps = getMaps(slide);
-      var markers = qsa(slide, '.wlb-marker[data-pid]');
-
-      for (var i = 0; i < markers.length; i++) {
-        var pid = toInt(markers[i].getAttribute('data-pid'));
-        if (maps.tmap[String(pid)] || maps.pmap[String(pid)]) {
-          updatePanels(slide, pid);
-          return;
-        }
-      }
-
-      updatePanels(slide, getSeedPid(slide));
-    }
-
-    function setActiveUI() {
-      track.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
-
-      slides.forEach(function (slide, i) {
-        if (i === currentIndex) slide.classList.add('is-active');
-        else slide.classList.remove('is-active');
-      });
-
-      dots.forEach(function (dot, i) {
-        if (i === currentIndex) dot.classList.add('active');
-        else dot.classList.remove('active');
-      });
-
-      thumbs.forEach(function (thumb, i) {
-        if (i === currentIndex) thumb.classList.add('active');
-        else thumb.classList.remove('active');
-      });
-
-      initFirstMarker(slides[currentIndex]);
-    }
-
-    function goTo(i) {
-      currentIndex = (i + slides.length) % slides.length;
-
-      var maps = getMaps(slides[currentIndex]);
-      console.log('[HS] goTo', currentIndex, {
-        lbid: slides[currentIndex].getAttribute('data-lbid'),
-        tmapKeys: Object.keys(maps.tmap || {}),
-        pmapKeys: Object.keys(maps.pmap || {})
-      });
-
-      setActiveUI();
-    }
-
-    function nextSlide() {
-      goTo(currentIndex + 1);
-    }
-
-    function prevSlide() {
-      goTo(currentIndex - 1);
-    }
-
-    navBtns.forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        var dir = btn.getAttribute('data-hs-nav');
-        console.log('[HS] nav click', dir);
-
-        if (dir === 'next') nextSlide();
-        else prevSlide();
-      });
-    });
-
-    thumbs.forEach(function (thumb, idx) {
-      thumb.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        console.log('[HS] thumb click', idx);
-        goTo(idx);
-
-        if (thumbsWrap) {
-          var tw = thumb.offsetWidth + 20;
-          var targetLeft = (tw * idx) - (thumbsWrap.offsetWidth / 2) + (tw / 2);
-
-          if (thumbsWrap.scrollTo) {
-            thumbsWrap.scrollTo({ left: targetLeft, behavior: 'smooth' });
-          } else {
-            thumbsWrap.scrollLeft = targetLeft;
+      
+      // Extraer datos del slide
+      var imap = JSON.parse(atob(slide.dataset.imap || '{}'));
+      var firstInfo = JSON.parse(atob(slide.dataset.firstinfo || '{}'));
+      
+      // Buscar primer testimonio válido
+      var info = firstInfo;
+      if (!info.nombre && !info.rol && !info.contenido && !info.galeria?.length) {
+        // Buscar en imap
+        for (var pid in imap) {
+          var item = imap[pid];
+          if (item.nombre || item.rol || item.contenido || item.galeria?.length) {
+            info = item;
+            break;
           }
         }
-      });
-
-      thumb.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          thumb.click();
-        }
-      });
-    });
-
-    root.addEventListener('click', function (e) {
-      var marker = closest(e.target, '.wlb-marker[data-pid]');
-      if (!marker || !root.contains(marker)) return;
-
-      var pid = toInt(marker.getAttribute('data-pid'));
-      if (!pid) return;
-
-      var slide = closest(marker, '.carousel-slide') || slides[currentIndex];
-      if (!slide) return;
-
-      updatePanels(slide, pid);
-
-      if (isMobile) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        var pmap = getMaps(slide).pmap || {};
-        openModalWithProduct(pmap[String(pid)] || {});
       }
-    }, true);
-
-    function interceptHotspotTouch(e) {
-      if (!isMobile) return;
-      if (!root.contains(e.target)) return;
-      if (closest(e.target, '.hs-modal')) return;
-      if (closest(e.target, '[data-hs-nav]')) return;
-
-      var marker = closest(e.target, '.wlb-marker[data-pid]');
-      if (!marker) return;
-
-      var pid = toInt(marker.getAttribute('data-pid'));
-      if (!pid) return;
-
-      var slide = closest(marker, '.carousel-slide') || slides[currentIndex];
-      if (!slide) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-      updatePanels(slide, pid);
-
-      var pmap = getMaps(slide).pmap || {};
-      openModalWithProduct(pmap[String(pid)] || {});
+      
+      // Actualizar testimonio
+      if (tName) tName.textContent = info.nombre || '';
+      if (tRole) tRole.textContent = info.rol || '';
+      if (tText) tText.innerHTML = info.contenido || '';
+      
+      // Actualizar galería
+      renderGallery(info.galeria || []);
     }
-
-    try {
-      document.addEventListener('touchstart', interceptHotspotTouch, { capture: true, passive: false });
-    } catch (err) {
-      document.addEventListener('touchstart', interceptHotspotTouch, true);
+    
+    function renderGallery(items) {
+      if (!galleryTrack || !galleryDots || !galleryRoot) return;
+      
+      currentGallery = 0;
+      items = Array.isArray(items) ? items : [];
+      
+      // Limpiar
+      galleryTrack.innerHTML = '';
+      galleryDots.innerHTML = '';
+      
+      if (items.length === 0) {
+        galleryTrack.innerHTML = '<div class="hs-side-gallery__slide is-active"><div class="hs-side-gallery__empty"></div></div>';
+        return;
+      }
+      
+      // Crear slides de galería
+      items.forEach((item, i) => {
+        var slide = document.createElement('div');
+        slide.className = `hs-side-gallery__slide ${i === 0 ? 'is-active' : ''}`;
+        slide.innerHTML = `<img class="hs-side-gallery__img" src="${item.url}" alt="${item.alt || ''}" loading="lazy">`;
+        galleryTrack.appendChild(slide);
+      });
+      
+      // Crear dots de galería
+      if (items.length > 1) {
+        items.forEach((_, i) => {
+          var dot = document.createElement('button');
+          dot.className = `hs-side-gallery__dot ${i === 0 ? 'is-active' : ''}`;
+          dot.dataset.galleryIndex = i;
+          dot.setAttribute('aria-label', `Imagen ${i + 1}`);
+          galleryDots.appendChild(dot);
+        });
+      }
+      
+      goToGallery(0);
     }
-
-    rebuildDots();
-    setActiveUI();
-  }
-
-  function initAll(scope) {
-    qsa(scope || document, '[data-hs-root]').forEach(initHotspots);
-  }
-
-  window.NLHotspotsInit = initHotspots;
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      initAll(document);
+    
+    function goToGallery(index) {
+      if (!galleryTrack) return;
+      
+      var gSlides = qsa(galleryTrack, '.hs-side-gallery__slide');
+      var gDots = qsa(root, '[data-gallery-index]');
+      
+      if (index < 0) index = gSlides.length - 1;
+      if (index >= gSlides.length) index = 0;
+      
+      currentGallery = index;
+      var gWidth = galleryRoot.offsetWidth;
+      galleryTrack.style.transform = `translateX(-${currentGallery * gWidth}px)`;
+      
+      gSlides.forEach((s, i) => s.classList.toggle('is-active', i === currentGallery));
+      gDots.forEach((d, i) => d.classList.toggle('is-active', i === currentGallery));
+    }
+    
+    // ===== 3. EVENTOS =====
+    // Flechas
+    prevBtns.forEach(btn => btn.onclick = () => goToSlide(currentSlide - 1));
+    nextBtns.forEach(btn => btn.onclick = () => goToSlide(currentSlide + 1));
+    
+    // Thumbs
+    thumbs.forEach((thumb, i) => {
+      thumb.onclick = () => goToSlide(i);
     });
-  } else {
-    initAll(document);
+    
+    // Dots principales
+    if (dotsBox) {
+      dotsBox.innerHTML = '';
+      slides.forEach((_, i) => {
+        var dot = document.createElement('button');
+        dot.className = `dot ${i === 0 ? 'active' : ''}`;
+        dot.onclick = () => goToSlide(i);
+        dotsBox.appendChild(dot);
+      });
+    }
+    
+    // Dots de galería
+    root.addEventListener('click', function(e) {
+      var galleryDot = e.target.closest('.hs-side-gallery__dot');
+      if (galleryDot && galleryDot.dataset.galleryIndex !== undefined) {
+        e.preventDefault();
+        goToGallery(parseInt(galleryDot.dataset.galleryIndex));
+      }
+    });
+    
+    // Markers (puntos en las imágenes)
+    root.addEventListener('click', function(e) {
+      var marker = e.target.closest('.wlb-marker[data-pid]');
+      if (marker) {
+        var pid = marker.dataset.pid;
+        var slide = slides[currentSlide];
+        var imap = JSON.parse(atob(slide.dataset.imap || '{}'));
+        if (imap[pid]) {
+          updateLeftPanel(slide); // Re-render con ese producto
+        }
+      }
+    });
+    
+    // Resize
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        goToSlide(currentSlide);
+      }, 250);
+    });
+    
+    // Inicializar
+    goToSlide(0);
+    console.log('🎉 Hotspots COMPLETO funcionando!');
   }
-
-  window.addEventListener('load', function () {
-    initAll(document);
+  
+  // Buscar e inicializar
+  document.addEventListener('DOMContentLoaded', function() {
+    var root = document.querySelector('[data-hs-root="1"]');
+    if (root) init(root);
   });
-
-  if ('MutationObserver' in window) {
-    var mo = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        mutation.addedNodes.forEach(function (node) {
-          if (!node || node.nodeType !== 1) return;
-
-          if (matches(node, '[data-hs-root]')) {
-            initHotspots(node);
-          } else if (node.querySelectorAll) {
-            initAll(node);
-          }
-        });
-      });
-    });
-
-    if (document.body) {
-      mo.observe(document.body, { childList: true, subtree: true });
-    } else {
-      document.addEventListener('DOMContentLoaded', function () {
-        mo.observe(document.body, { childList: true, subtree: true });
-      });
-    }
-  }
+  
+  // También por si acaso
+  window.addEventListener('load', function() {
+    var root = document.querySelector('[data-hs-root="1"]');
+    if (root) init(root);
+  });
 })();
 </script>

@@ -21,12 +21,12 @@ if ( ! function_exists('nlk_shop__get_term_thumb_url') ) {
 if ( ! function_exists('nlk_shop__get_default_banner_url') ) {
   function nlk_shop__get_default_banner_url(){
     $parents = get_terms([
-  'taxonomy'   => 'product_cat',
-  'hide_empty' => false,
-  'parent'     => 0,
-  'orderby'    => 'menu_order',
-  'order'      => 'ASC',
-]);
+      'taxonomy'   => 'product_cat',
+      'hide_empty' => false,
+      'parent'     => 0,
+      'orderby'    => 'menu_order',
+      'order'      => 'ASC',
+    ]);
 
     if (!empty($parents) && !is_wp_error($parents)) {
       foreach ($parents as $p) {
@@ -78,6 +78,7 @@ if ( ! function_exists('nlk_shop__normalize_image_url') ) {
     return '';
   }
 }
+
 if ( ! function_exists('nlk_shop__get_breadcrumbs_html') ) {
   function nlk_shop__get_breadcrumbs_html($selected_term_id = 0){
     $crumbs = [];
@@ -155,6 +156,16 @@ if ( function_exists('is_product_category') && is_product_category() ) {
   if ($t && !is_wp_error($t)) $selected_term_id = (int) $t->term_id;
 }
 
+// Estado inicial showroom (taxonomía ACF)
+$selected_showroom_id = 0;
+if ( function_exists('is_tax') && is_tax('showroom') ) {
+  $qo = get_queried_object();
+  if ($qo && !empty($qo->term_id)) $selected_showroom_id = (int) $qo->term_id;
+} elseif (!empty($_GET['showroom'])) {
+  $sr = get_term_by('slug', sanitize_text_field(wp_unslash($_GET['showroom'])), 'showroom');
+  if ($sr && !is_wp_error($sr)) $selected_showroom_id = (int) $sr->term_id;
+}
+
 // Config
 $per_page = 12;
 $paged    = 1;
@@ -168,12 +179,29 @@ $args = [
   'paged'          => $paged,
 ];
 
+$tax_query = [];
+
 if ($selected_term_id) {
-  $args['tax_query'] = [[
+  $tax_query[] = [
     'taxonomy' => 'product_cat',
     'field'    => 'term_id',
     'terms'    => [$selected_term_id],
-  ]];
+  ];
+}
+
+if ($selected_showroom_id) {
+  $tax_query[] = [
+    'taxonomy' => 'showroom',
+    'field'    => 'term_id',
+    'terms'    => [$selected_showroom_id],
+  ];
+}
+
+if (!empty($tax_query)) {
+  if (count($tax_query) > 1) {
+    $tax_query['relation'] = 'AND';
+  }
+  $args['tax_query'] = $tax_query;
 }
 
 // Orden inicial
@@ -231,13 +259,23 @@ $nonce   = wp_create_nonce('nlk_shop_nonce');
 $ajaxUrl = admin_url('admin-ajax.php');
 
 // Categorías (parents)
-   $parents = get_terms([
+$parents = get_terms([
   'taxonomy'   => 'product_cat',
   'hide_empty' => false,
   'parent'     => 0,
   'orderby'    => 'menu_order',
   'order'      => 'ASC',
 ]);
+
+// Taxonomía showroom
+$showrooms = get_terms([
+  'taxonomy'   => 'showroom',
+  'hide_empty' => false,
+  'orderby'    => 'name',
+  'order'      => 'ASC',
+]);
+
+$showroom_is_open = !empty($showrooms) && !is_wp_error($showrooms) && !empty($selected_showroom_id);
 
 // Abrir parent si un child está activo
 $active_parent_id = 0;
@@ -262,13 +300,15 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
   data-nonce="<?php echo esc_attr($nonce); ?>"
   data-per-page="<?php echo esc_attr($per_page); ?>"
   data-term-id="<?php echo esc_attr($selected_term_id); ?>"
+  data-showroom-id="<?php echo esc_attr($selected_showroom_id); ?>"
   data-order="<?php echo esc_attr($order); ?>"
   data-default-banner="<?php echo esc_attr($default_banner_url); ?>"
   data-fixed-banner="<?php echo esc_attr($fixed_banner_url); ?>"
 >
   <div class="nlk-shop__breadcrumbs-wrap" data-role="breadcrumbs">
-  <?php echo $breadcrumbs_html; ?>
-</div>
+    <?php echo $breadcrumbs_html; ?>
+  </div>
+
   <div
     class="nlk-shop__banner"
     style="<?php echo $banner_url ? '--nlk-shop-banner:url(' . esc_url($banner_url) . ');' : ''; ?>"
@@ -364,8 +404,6 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
     </div>
   </div>
 
-
-
   <div class="nlk-shop__page-header">
     <div class="nlk-shop__header">
       <div class="column-header-primary"></div>
@@ -389,18 +427,26 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
 
         <div class="nlk-shop__filter-content">
           <?php if (!empty($parents) && !is_wp_error($parents)) : ?>
+            <?php $default_product_cat_id = (int) get_option('default_product_cat'); ?>
+
             <?php foreach ($parents as $parent) : ?>
               <?php
+              if ((int)$parent->term_id === $default_product_cat_id) {
+                continue;
+              }
+
               $children = get_terms([
-  'taxonomy'   => 'product_cat',
-  'hide_empty' => false,
-  'parent'     => $parent->term_id,
-  'orderby'    => 'menu_order',
-  'order'      => 'ASC',
-]);
-                $has_children = !empty($children) && !is_wp_error($children);
-                $is_open = $has_children && ((int)$parent->term_id === (int)$active_parent_id);
+                'taxonomy'   => 'product_cat',
+                'hide_empty' => false,
+                'parent'     => $parent->term_id,
+                'orderby'    => 'menu_order',
+                'order'      => 'ASC',
+              ]);
+
+              $has_children = !empty($children) && !is_wp_error($children);
+              $is_open = $has_children && ((int)$parent->term_id === (int)$active_parent_id);
               ?>
+
               <button
                 type="button"
                 class="nlk-shop__filter-item nlk-shop__filter-parent nlk-shop__cat-btn <?php echo ((int)$parent->term_id === (int)$selected_term_id) ? 'is-active' : ''; ?>"
@@ -420,6 +466,11 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
               <?php if ($has_children) : ?>
                 <div class="nlk-shop__submenu" data-submenu="<?php echo esc_attr($parent->term_id); ?>" style="<?php echo $is_open ? '' : 'display:none;'; ?>">
                   <?php foreach ($children as $child) : ?>
+                    <?php
+                    if ((int)$child->term_id === $default_product_cat_id) {
+                      continue;
+                    }
+                    ?>
                     <button
                       type="button"
                       class="nlk-shop__filter-subitem nlk-shop__cat-btn <?php echo ((int)$child->term_id === (int)$selected_term_id) ? 'is-active' : ''; ?>"
@@ -462,10 +513,36 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
               Lo más antiguo
             </label>
 
-            <div class="nlk-shop__filter-item nlk-shop__filter-item--static">
-              <span>Por ubicación</span>
-              <span class="nlk-shop__expand-icon">+</span>
-            </div>
+            <?php if (!empty($showrooms) && !is_wp_error($showrooms)) : ?>
+              <button
+                type="button"
+                class="nlk-shop__filter-item nlk-shop__filter-parent"
+                data-showroom-parent="showroom"
+                data-action="toggle-showroom-submenu"
+                aria-expanded="<?php echo $showroom_is_open ? 'true' : 'false'; ?>"
+              >
+                <span class="nlk-shop__filter-label">Por ubicación</span>
+                <span class="nlk-shop__expand-icon" data-action="toggle-showroom-submenu" aria-hidden="true">
+                  <?php echo $showroom_is_open ? '−' : '+'; ?>
+                </span>
+              </button>
+
+              <div
+                class="nlk-shop__submenu"
+                data-showroom-submenu="showroom"
+                style="<?php echo $showroom_is_open ? '' : 'display:none;'; ?>"
+              >
+                <?php foreach ($showrooms as $showroom_term) : ?>
+                  <button
+                    type="button"
+                    class="nlk-shop__filter-subitem nlk-shop__showroom-btn <?php echo ((int)$showroom_term->term_id === (int)$selected_showroom_id) ? 'is-active' : ''; ?>"
+                    data-showroom-id="<?php echo esc_attr($showroom_term->term_id); ?>"
+                  >
+                    <?php echo esc_html($showroom_term->name); ?>
+                  </button>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -526,7 +603,7 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
       root.classList.toggle('is-loading', !!isLoading);
     }
 
-    async function loadShop(root, { termId, page, order }){
+    async function loadShop(root, { termId, showroomId, page, order }){
       const ajaxUrl = root.dataset.ajaxUrl;
       const nonce   = root.dataset.nonce;
       const perPage = root.dataset.perPage;
@@ -537,6 +614,7 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
       fd.append('action', 'nlk_shop_filter_breadcrumbs');
       fd.append('nonce', nonce);
       fd.append('term_id', termId || 0);
+      fd.append('showroom_id', showroomId || 0);
       fd.append('page', page || 1);
       fd.append('order', order || 'stock');
       fd.append('per_page', perPage || 12);
@@ -565,12 +643,12 @@ $breadcrumbs_html = nlk_shop__get_breadcrumbs_html($selected_term_id);
         const countEl = qs(root, '[data-role="count"]');
         if (titleEl) titleEl.textContent = (data.title || '').toUpperCase();
         if (countEl) countEl.textContent = data.count_label || '';
-        
-      // breadcrumbs
-const breadcrumbsEl = qs(root, '[data-role="breadcrumbs"]');
-if (breadcrumbsEl && typeof data.breadcrumbs_html !== 'undefined') {
-  breadcrumbsEl.innerHTML = data.breadcrumbs_html || '';
-}
+
+        // breadcrumbs
+        const breadcrumbsEl = qs(root, '[data-role="breadcrumbs"]');
+        if (breadcrumbsEl && typeof data.breadcrumbs_html !== 'undefined') {
+          breadcrumbsEl.innerHTML = data.breadcrumbs_html || '';
+        }
 
         // grid + pagination
         const grid = qs(root, '[data-role="grid"]');
@@ -578,18 +656,26 @@ if (breadcrumbsEl && typeof data.breadcrumbs_html !== 'undefined') {
         if (grid) grid.innerHTML = data.grid_html || '';
         if (pag)  pag.innerHTML  = data.pagination_html || '';
 
+        const activeTermId = (typeof data.active_term_id !== 'undefined') ? data.active_term_id : (termId || 0);
+        const activeShowroomId = (typeof data.active_showroom_id !== 'undefined') ? data.active_showroom_id : (showroomId || 0);
+
         // active state categories
         qsa(root, '.nlk-shop__cat-btn').forEach(btn => {
-          btn.classList.toggle('is-active', String(btn.dataset.termId) === String(data.active_term_id));
+          btn.classList.toggle('is-active', String(btn.dataset.termId) === String(activeTermId));
+        });
+
+        qsa(root, '.nlk-shop__showroom-btn').forEach(btn => {
+          btn.classList.toggle('is-active', String(btn.dataset.showroomId) === String(activeShowroomId));
         });
 
         // guardar estado
-        root.dataset.termId = data.active_term_id || 0;
-        root.dataset.order  = data.order || 'stock';
+        root.dataset.termId = activeTermId || 0;
+        root.dataset.showroomId = activeShowroomId || 0;
+        root.dataset.order  = data.order || order || 'stock';
 
         // sync radios
         qsa(root, 'input[type="radio"][name$="-order"]').forEach(r => {
-          r.checked = (r.value === (data.order || 'stock'));
+          r.checked = (r.value === (data.order || order || 'stock'));
         });
 
         // scroll suave al header
@@ -717,31 +803,64 @@ if (breadcrumbsEl && typeof data.breadcrumbs_html !== 'undefined') {
           return;
         }
 
+        const showroomToggle = ev.target.closest('[data-action="toggle-showroom-submenu"]');
+        if (showroomToggle && root.contains(showroomToggle)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          const parentBtn = qs(root, '[data-showroom-parent="showroom"]');
+          const submenu = qs(root, '[data-showroom-submenu="showroom"]');
+          if (!parentBtn || !submenu) return;
+
+          const isOpen = submenu.style.display !== 'none';
+          submenu.style.display = isOpen ? 'none' : 'block';
+          parentBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+
+          const icon = qs(parentBtn, '.nlk-shop__expand-icon');
+          if (icon) icon.textContent = isOpen ? '+' : '−';
+
+          return;
+        }
+
         const pagBtn = ev.target.closest('.nlk-shop__pagination-btn');
         if (pagBtn && root.contains(pagBtn)) {
           if (pagBtn.hasAttribute('disabled')) return;
 
-          const page   = parseInt(pagBtn.dataset.page || '1', 10);
-          const termId = parseInt(root.dataset.termId || '0', 10);
-          const order  = root.dataset.order || 'stock';
-          loadShop(root, { termId, page, order });
+          const page       = parseInt(pagBtn.dataset.page || '1', 10);
+          const termId     = parseInt(root.dataset.termId || '0', 10);
+          const showroomId = parseInt(root.dataset.showroomId || '0', 10);
+          const order      = root.dataset.order || 'stock';
+          loadShop(root, { termId, showroomId, page, order });
+          return;
+        }
+
+        const showroomBtn = ev.target.closest('.nlk-shop__showroom-btn');
+        if (showroomBtn && root.contains(showroomBtn)) {
+          const showroomId = parseInt(showroomBtn.dataset.showroomId || '0', 10);
+          const termId     = parseInt(root.dataset.termId || '0', 10);
+          const order      = root.dataset.order || 'stock';
+
+          loadShop(root, { termId, showroomId, page: 1, order });
+          closeModals();
           return;
         }
 
         const catBtn = ev.target.closest('.nlk-shop__cat-btn');
         if (!catBtn || !root.contains(catBtn)) return;
 
-        const termId = parseInt(catBtn.dataset.termId || '0', 10);
-        const order  = root.dataset.order || 'stock';
-        loadShop(root, { termId, page: 1, order });
+        const termId     = parseInt(catBtn.dataset.termId || '0', 10);
+        const showroomId = parseInt(root.dataset.showroomId || '0', 10);
+        const order      = root.dataset.order || 'stock';
+        loadShop(root, { termId, showroomId, page: 1, order });
         closeModals();
       });
 
       qsa(root, 'input[type="radio"][name$="-order"]').forEach(r => {
         r.addEventListener('change', () => {
           if (!r.checked) return;
-          const termId = parseInt(root.dataset.termId || '0', 10);
-          loadShop(root, { termId, page: 1, order: r.value });
+          const termId     = parseInt(root.dataset.termId || '0', 10);
+          const showroomId = parseInt(root.dataset.showroomId || '0', 10);
+          loadShop(root, { termId, showroomId, page: 1, order: r.value });
 
           if (isMobile()) closeModals();
         });

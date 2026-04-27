@@ -176,7 +176,6 @@ if ( $coleccion_term instanceof WP_Term ) {
     foreach ( $nlc_cat_ids as $term_id => $term_obj ) {
       if ( $term_obj instanceof WP_Term && ! is_wp_error( $term_obj ) ) {
 
-        // ⛔️ blacklist acá también, por las dudas
         $blacklist_slugs = [ 'uncategorized', 'sin-categoria' ];
         if ( in_array( $term_obj->slug, $blacklist_slugs, true ) ) {
           continue;
@@ -501,7 +500,7 @@ if ( $coleccion_term instanceof WP_Term ) {
 /**
  * Sección: Gallery Taxonomy (sin hero)
  * Campos ACF (asociados al término de la taxonomía "coleccion"):
- * - background1 (image)
+ * - background1 (gallery)
  * - title1 (text)
  * - description1 (textarea)
  * - background2 (file/video)
@@ -510,7 +509,6 @@ if ( $coleccion_term instanceof WP_Term ) {
  */
 
 if ( ! function_exists('get_field') ) {
-    // ACF no está activo, no hacemos nada.
     echo '<p><em>ACF plugin required.</em></p>';
 } else {
 
@@ -527,6 +525,10 @@ if ( ! function_exists('get_field') ) {
             if ( is_array($img) ) {
                 if ( ! empty($img['sizes'][$size]) ) return esc_url($img['sizes'][$size]);
                 if ( ! empty($img['url']) )          return esc_url($img['url']);
+                if ( ! empty($img['ID']) ) {
+                    $src = wp_get_attachment_image_src((int) $img['ID'], $size);
+                    if ( $src && ! empty($src[0]) ) return esc_url($src[0]);
+                }
             } elseif ( is_numeric($img) ) {
                 $src = wp_get_attachment_image_src((int) $img, $size);
                 if ($src && !empty($src[0])) return esc_url($src[0]);
@@ -534,6 +536,38 @@ if ( ! function_exists('get_field') ) {
                 return esc_url($img);
             }
             return '';
+        }
+    }
+
+    /**
+     * Helper para obtener URLs de una galería ACF
+     */
+    if ( ! function_exists('nl_tax_gallery_gallery_urls') ) {
+        function nl_tax_gallery_gallery_urls( $gallery, $size = 'large' ) {
+            $urls = [];
+
+            if ( is_array($gallery) ) {
+                foreach ( $gallery as $item ) {
+                    $url = nl_tax_gallery_img_url($item, $size);
+                    if ( ! $url ) {
+                        $url = nl_tax_gallery_img_url($item, 'full');
+                    }
+                    if ( $url ) {
+                        $urls[] = $url;
+                    }
+                }
+            } else {
+                // fallback por si ACF devuelve una sola imagen
+                $single = nl_tax_gallery_img_url($gallery, $size);
+                if ( ! $single ) {
+                    $single = nl_tax_gallery_img_url($gallery, 'full');
+                }
+                if ( $single ) {
+                    $urls[] = $single;
+                }
+            }
+
+            return array_values(array_unique(array_filter($urls)));
         }
     }
 
@@ -618,11 +652,9 @@ if ( ! function_exists('get_field') ) {
         }
     }
 
-    // ID y clases base (únicas para esta sección)
     $section_id = 'tax-gallery-' . ( $term ? $term->term_id : uniqid() );
     $classes    = 'tax_gallery_block';
 
-    // Armo SOLO 2 secciones
     $sections = [];
     $has_any  = false;
 
@@ -648,12 +680,24 @@ if ( ! function_exists('get_field') ) {
             $t = trim($t);
             $d = trim($d);
 
-            $media_type = '';
-            $media_url  = '';
-            $media_mime = '';
+            $media_type   = '';
+            $media_url    = '';
+            $media_mime   = '';
+            $gallery_urls = [];
 
-            if ( $i === 2 ) {
-                // background2 ahora es FIELD TIPO ARCHIVO para video
+            if ( $i === 1 ) {
+                // background1 ahora es una GALERÍA ACF
+                $gallery_urls = nl_tax_gallery_gallery_urls($bg_raw, 'large');
+
+                if ( empty($gallery_urls) ) {
+                    $gallery_urls = nl_tax_gallery_gallery_urls($bg_raw, 'full');
+                }
+
+                if ( ! empty($gallery_urls) ) {
+                    $media_type = 'gallery';
+                }
+            } else {
+                // background2 sigue siendo file/video
                 $media = nl_tax_gallery_media_data($bg_raw);
 
                 if ( ! empty($media['url']) && ! empty($media['is_video']) ) {
@@ -661,30 +705,24 @@ if ( ! function_exists('get_field') ) {
                     $media_url  = $media['url'];
                     $media_mime = $media['mime'];
                 } else {
-                    // fallback por si alguna vez suben imagen igual
                     $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
                     if ( $img_url ) {
                         $media_type = 'image';
                         $media_url  = $img_url;
                     }
                 }
-            } else {
-                $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
-                if ( $img_url ) {
-                    $media_type = 'image';
-                    $media_url  = $img_url;
-                }
             }
 
             $sections[$i] = [
-                'media_type' => $media_type,
-                'media_url'  => $media_url,
-                'media_mime' => $media_mime,
-                't'          => $t,
-                'd'          => $d,
+                'media_type'   => $media_type,
+                'media_url'    => $media_url,
+                'media_mime'   => $media_mime,
+                'gallery_urls' => $gallery_urls,
+                't'            => $t,
+                'd'            => $d,
             ];
 
-            if ( $media_url !== '' || $t !== '' || $d !== '' ) {
+            if ( $media_url !== '' || ! empty($gallery_urls) || $t !== '' || $d !== '' ) {
                 $has_any = true;
             }
         }
@@ -693,18 +731,30 @@ if ( ! function_exists('get_field') ) {
     if ( $has_any ) : ?>
         <section id="<?php echo esc_attr($section_id); ?>" class="<?php echo esc_attr($classes); ?>">
             <?php for ( $i = 1; $i <= 2; $i++ ) :
-                $media_type = $sections[$i]['media_type'] ?? '';
-                $media_url  = $sections[$i]['media_url'] ?? '';
-                $media_mime = $sections[$i]['media_mime'] ?? '';
-                $t          = $sections[$i]['t'] ?? '';
-                $d          = $sections[$i]['d'] ?? '';
+                $media_type   = $sections[$i]['media_type'] ?? '';
+                $media_url    = $sections[$i]['media_url'] ?? '';
+                $media_mime   = $sections[$i]['media_mime'] ?? '';
+                $gallery_urls = $sections[$i]['gallery_urls'] ?? [];
+                $t            = $sections[$i]['t'] ?? '';
+                $d            = $sections[$i]['d'] ?? '';
 
-                if ( $media_url === '' && $t === '' && $d === '' ) continue;
+                if ( $media_url === '' && empty($gallery_urls) && $t === '' && $d === '' ) continue;
             ?>
                 <div class="tax_gallery_section tax_gallery_section-<?php echo (int) $i; ?>">
-                    <!-- Fondo sticky -->
                     <div class="tax_gallery_section-background">
-                        <?php if ( $media_type === 'video' && $media_url ) : ?>
+                        <?php if ( $media_type === 'gallery' && ! empty($gallery_urls) ) : ?>
+                            <div class="tax_gallery_bg-gallery" data-gallery-interval="3000">
+                                <?php foreach ( $gallery_urls as $index => $url ) : ?>
+                                    <img
+                                        class="tax_gallery_bg-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                        src="<?php echo esc_url($url); ?>"
+                                        alt=""
+                                        <?php echo $index === 0 ? 'fetchpriority="high"' : 'loading="lazy"'; ?>
+                                        decoding="async">
+                                <?php endforeach; ?>
+                            </div>
+
+                        <?php elseif ( $media_type === 'video' && $media_url ) : ?>
                             <video
                                 class="tax_gallery_bg-video"
                                 autoplay
@@ -714,6 +764,7 @@ if ( ! function_exists('get_field') ) {
                                 preload="metadata">
                                 <source src="<?php echo esc_url($media_url); ?>"<?php if ( $media_mime ) : ?> type="<?php echo esc_attr($media_mime); ?>"<?php endif; ?>>
                             </video>
+
                         <?php elseif ( $media_type === 'image' && $media_url ) : ?>
                             <img
                                 class="tax_gallery_bg-image"
@@ -744,9 +795,42 @@ if ( ! function_exists('get_field') ) {
                 </div>
             <?php endfor; ?>
         </section>
+
+        <script>
+        (function(){
+          var root = document.getElementById('<?php echo esc_js($section_id); ?>');
+          if (!root) return;
+
+          var galleries = root.querySelectorAll('.tax_gallery_bg-gallery[data-gallery-interval]');
+
+          galleries.forEach(function(gallery){
+            var slides   = gallery.querySelectorAll('.tax_gallery_bg-slide');
+            var interval = parseInt(gallery.getAttribute('data-gallery-interval'), 10) || 3000;
+
+            if (!slides.length) return;
+
+            if (slides.length === 1) {
+              slides[0].classList.add('is-active');
+              return;
+            }
+
+            var current = 0;
+
+            slides.forEach(function(slide, index){
+              slide.classList.toggle('is-active', index === 0);
+            });
+
+            window.setInterval(function(){
+              slides[current].classList.remove('is-active');
+              current = (current + 1) % slides.length;
+              slides[current].classList.add('is-active');
+            }, interval);
+          });
+        })();
+        </script>
     <?php
-    endif; // $has_any
-} // endif get_field
+    endif;
+}
 ?>
 
 <?php

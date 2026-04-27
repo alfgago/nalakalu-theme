@@ -142,7 +142,7 @@ body {
 
 .font-body-small {
   font-family: var(--font-matter);
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-style: normal;
   font-weight: 400;
   line-height: 1.5rem;

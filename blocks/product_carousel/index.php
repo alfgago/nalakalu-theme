@@ -148,7 +148,7 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
         $first_link = $tabs[0]['link'];
       ?>
       <a class="desktop-only view-more btn btn-outline-cafe" href="<?php echo esc_url($first_link); ?>">
-        <span class="view-more__label">Ver más de <?php echo esc_html($first_name); ?></span>
+        <span class="view-more__label">Ver stock de <?php echo esc_html($first_name); ?></span>
         <img class="cta-arrow" src="<?php echo esc_url($arrow_url); ?>" alt="" aria-hidden="true" />
       </a>
     </div>
@@ -156,7 +156,7 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
     <!-- Título + flechas (flechas ocultas en mobile) -->
     <div class="title-row">
       <h1 class="font-heading-2">
-        AHORA MISMO EN <span class="current-location"><?php echo esc_html($first_name); ?></span>
+        AHORA DISPONIBLE EN <span class="current-location"><?php echo esc_html($first_name); ?></span>
       </h1>
       <div class="nav-buttons">
         <button class="carousel-btn prev-btn" aria-label="Anterior"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="28" viewBox="0 0 16 14" fill="none">
@@ -182,7 +182,7 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
       <div class="carousel-dots" id="<?php echo esc_attr($section_id); ?>-dots"></div>
 
       <a class="mobile-only view-more btn btn-outline-cafe" href="<?php echo esc_url($first_link); ?>">
-        <span class="view-more__label">Ver más de <?php echo esc_html($first_name); ?></span>
+        <span class="view-more__label">Ver stock de <?php echo esc_html($first_name); ?></span>
         <img class="cta-arrow" src="<?php echo esc_url($arrow_url); ?>" alt="" aria-hidden="true" />
       </a>
     </div>
@@ -328,7 +328,7 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
     if (tabMeta[idx]) {
       currentLoc.textContent = tabMeta[idx].name;
       if (viewMore) {
-        if (viewMoreLabel) viewMoreLabel.textContent = 'Ver más de ' + tabMeta[idx].name;
+        if (viewMoreLabel) viewMoreLabel.textContent = 'Ver stock de ' + tabMeta[idx].name;
         viewMore.setAttribute('href', tabMeta[idx].link);
       }
     }

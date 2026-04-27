@@ -23,6 +23,7 @@ body { scroll-snap-type: y mandatory; }
 
 .video-section .font-body-small p{
   text-align:justify;
+  font-size:1.1rem;
 }
 
 .hero   .canvas-wrapper {

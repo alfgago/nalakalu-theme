@@ -88,7 +88,7 @@ backdrop-filter: blur(15px);}
 
 
 .nl-showroom-badge .nl-badge-svg { position: absolute; inset: 0; padding: 1rem; }
-.nl-showroom-badge .nl-badge-text-svg {font-family: var(--font-space-mono); font-size: 1.2rem; font-weight: 400; letter-spacing: 2px; fill: var(--badge-text);}
+.nl-showroom-badge .nl-badge-text-svg {font-family: var(--font-space-mono); font-size: 1.2rem; font-weight: 400; letter-spacing: 5px; fill: white;}
 .nl-showroom-badge .nl-badge-center { position: absolute; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: var(--badge-text);}
 .nl-showroom-badge .nl-badge-center-disc {position: absolute; inset: 0;border-radius: 200px;
 background: rgba(255, 255, 255, 0.14);
@@ -111,7 +111,7 @@ backdrop-filter: blur(4.650000095367432px);}
 /* ===== Breadcrumbs ===== */
 .nl-breadcrumbs {  max-width: 100%; margin: 0 auto; padding: 20px 24px 8px; color: #3D332B;}
 .nl-bc-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; }
-.nl-bc-item {  position: relative; display: inline-flex; align-items: center;  color:#3D332B; font-family: var(--font-space-mono); font-size: 16px; font-style: normal; font-weight: 400;line-height: 25px; }
+.nl-bc-item {  position: relative; display: inline-flex; align-items: center;  color:#3D332B; font-family: var(--font-space-mono); margin-top:8px; font-size:18px; font-style: normal; font-weight: 400;line-height: 25px; }
 .nl-bc-item + .nl-bc-item::before {  content: "›";  margin: 0 6px 0 2px;  opacity: .6;}
 .nl-bc-link { text-decoration: none; color: inherit; opacity: .85;}
 .nl-bc-link:hover { opacity: 1; text-decoration: underline; }

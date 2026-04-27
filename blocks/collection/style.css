@@ -28,8 +28,7 @@
 
 .has-dynamic-bg{
   background-image:
-    linear-gradient(180deg, rgba(225,207,186,0) 0%, rgba(225,207,186,0) 50%, rgba(225,207,186,1) 60%, rgba(225,207,186,1) 80%, rgba(255,255,255,1) 90%, rgba(255,255,255,1) 100%),
-    var(--bg-desktop);
+   linear-gradient(180deg, rgba(225, 207, 186, 0) 0%, rgba(225, 207, 186, 0) 50%, rgb(225 207 186 / 58%) 60%, rgba(225, 207, 186, 1) 80%, rgba(255, 255, 255, 1) 90%, rgba(255, 255, 255, 1) 100%), var(--bg-desktop);
   background-position: 0 0, center;
   background-size: 100% 100%, cover;
   background-repeat: no-repeat, no-repeat;
@@ -86,7 +85,7 @@
   width: 100%;
   height: 100%;
   z-index: 0;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
 }
 .collection-text.has-video-bg > :not(.collection-bg-video-deco){
@@ -96,7 +95,7 @@
 
 
 
-.collection-foot .font-body-small{ font-size:1.5rem; max-width: 32rem; }
+.collection-foot .font-body-small{ font-size:1.5rem; max-width: 32rem; text-align:justify; }
 .collection-section .btn{ color: var(--color-cafe);padding:0; }
 
 .carousel-wrapper a:hover{ color: var(--color-cafe); }
@@ -104,7 +103,7 @@
 .carousel-wrapper a:focus{ color: var(--color-cafe); }
 
 .item-details{ flex:1; }
-.item-info .font-overline{ text-align:right; max-width: 12rem; }
+.item-info .font-overline{ text-align:right; max-width: 12rem; font-size:1.25rem}
 
 .collection-section .collection-product{
   display:flex; flex-direction:column; position: relative; justify-content:flex-end;
@@ -113,9 +112,9 @@
 .product-badge{
   position: absolute;
   top: 20%;
-  left: -77px;
-  width: 150px;
-  height: 150px;
+  left: -9.5rem;
+  width: 194px;
+  height: 194px;
   background-color: rgba(255,255,255,0.127);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
@@ -179,6 +178,10 @@
   padding-bottom:3rem;
   position: relative;
   z-index: 50;
+}
+
+.collection-tax-logo{
+max-width:20rem;
 }
 
 .carousel-container.dragging{ cursor:grabbing; }
@@ -263,6 +266,88 @@
 
 .carousel-dot.is-active{ background:#B7A48D; }
 
+.info-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.info-carousel-actions {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.carousel-arrows {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.carousel-arrow {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 999px;
+  border: 1px solid #3D332B;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.carousel-arrow:hover {
+  transform: translateY(-1px);
+}
+
+.carousel-arrow svg {
+  display: block;
+}
+
+.carousel-arrow--prev svg {
+  transform: rotate(180deg);
+}
+
+.carousel-arrow.is-disabled,
+.carousel-arrow:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .info-carousel {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .info-carousel .font-heading-3 {
+    width: 100%;
+  }
+
+  .info-carousel-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .carousel-arrows {
+    margin-left: auto;
+  }
+
+  .carousel-arrow {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+}
+
 @media (max-width: 768px){
   .collection-section .collection-content{
     flex-direction:column;
@@ -339,4 +424,16 @@
   .item-info .font-overline{
     font-size:1.5rem;
   }
+  
+  .collection-bg-video-deco {
+    position: absolute;
+    top: -20rem;
+    left: -7rem;
+    width: 200vw;
+    height: 200vw;
+}
+
+.collection-tax-logo {
+    margin-bottom: 3rem;
+}
 }

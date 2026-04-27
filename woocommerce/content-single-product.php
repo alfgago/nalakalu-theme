@@ -313,7 +313,7 @@ $crumbs[] = ['label'=>$title, 'url'=>null, 'pos'=>$pos++];
  *  SHOWROOM (galería principal + badge)
  * ======================================================= */
 $collection_name = nl_get_collection_name($product);
-$badge_text      = 'Explora nuestro Showroom en ' . $collection_name;
+$badge_text      = 'Disponible ahora en ' . $collection_name;
 
 $image_ids       = nl_get_product_image_ids($product);
 $uid             = 'nl-showroom-' . get_the_ID();
@@ -1534,7 +1534,7 @@ if ( function_exists('get_field') && ($detras_de_cards = get_field('detras_de', 
 <section id="<?php echo esc_attr($uid); ?>" class="detrasde-block" aria-label="<?php echo esc_attr('Detrás de ' . get_the_title($post_id)); ?>">
   <div class="detrasde-container">
     <div class="detrasde-header">
-      <h2 class="detrasde-title"><?php echo esc_html('Detrás de ' . get_the_title($post_id)); ?></h2>
+      <h2 class="detrasde-title">Detrás de cada pieza</h2>
       <?php if ($btn_url): ?>
         <a class="detrasde-discover-btn" href="<?php echo esc_url($btn_url); ?>"><?php echo esc_html($btn_text); ?></a>
       <?php else: ?>

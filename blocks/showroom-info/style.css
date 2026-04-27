@@ -24,7 +24,7 @@
 }
 
 .showroom_info_block .font-heading-1 {
-  max-width: 50rem;
+  max-width: 60rem;
 }
 
 .showroom_info_block .font-body-small p {
@@ -75,7 +75,7 @@
   position: absolute;
   top: 50%; left: 56%;
   transform: translate(-50%, -50%);
-  width: 160px; height: 160px;
+  width: 180px; height: 180px;
   border-radius: 500px;
   background: rgba(255, 255, 255, 0.40);
   backdrop-filter: blur(20px);
