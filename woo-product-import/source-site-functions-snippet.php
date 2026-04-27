@@ -163,6 +163,7 @@ if (! class_exists('NLK_Source_Product_Export_Snippet')) {
 								'id'   => (int) $term->term_id,
 								'name' => $term->name,
 								'slug' => $term->slug,
+								'image' => self::export_term_image_data((int) $term->term_id),
 							);
 						}
 					}
@@ -187,6 +188,57 @@ if (! class_exists('NLK_Source_Product_Export_Snippet')) {
 			}
 
 			return $out;
+		}
+
+		protected static function export_term_image_data($term_id) {
+			$term_id = absint($term_id);
+			if (! $term_id) {
+				return array();
+			}
+
+			foreach (array('thumbnail_id', 'image_id', 'product_attribute_image', 'swatch_image', 'term_image', 'image') as $meta_key) {
+				$value = get_term_meta($term_id, $meta_key, true);
+				$image = self::normalize_exported_image_value($value, $meta_key);
+				if (! empty($image['url'])) {
+					return $image;
+				}
+			}
+
+			if (function_exists('get_field')) {
+				foreach (array('imagen', 'image', 'swatch', 'thumbnail') as $field_key) {
+					$value = get_field($field_key, 'term_' . $term_id);
+					$image = self::normalize_exported_image_value($value, $field_key);
+					if (! empty($image['url'])) {
+						return $image;
+					}
+				}
+			}
+
+			return array();
+		}
+
+		protected static function normalize_exported_image_value($value, $source_key) {
+			if (is_numeric($value) && (int) $value > 0) {
+				$url = wp_get_attachment_image_url((int) $value, 'full');
+				return $url ? array('url' => $url, 'source_key' => $source_key) : array();
+			}
+
+			if (is_string($value) && preg_match('~^https?://~', $value)) {
+				return array('url' => esc_url_raw($value), 'source_key' => $source_key);
+			}
+
+			if (is_array($value)) {
+				if (! empty($value['url'])) {
+					return array('url' => esc_url_raw($value['url']), 'source_key' => $source_key);
+				}
+				if (! empty($value['ID']) || ! empty($value['id'])) {
+					$id = ! empty($value['ID']) ? (int) $value['ID'] : (int) $value['id'];
+					$url = wp_get_attachment_image_url($id, 'full');
+					return $url ? array('url' => $url, 'source_key' => $source_key) : array();
+				}
+			}
+
+			return array();
 		}
 
 		protected static function export_product_taxonomies($product_id) {

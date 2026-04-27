@@ -343,11 +343,10 @@ $badge_text      = 'Disponible ahora en ' . $collection_name;
 
 $image_ids       = nl_get_product_image_ids($product);
 $banner_id       = nl_get_product_banner_image_id($product);
-$showroom_ids    = array_values(array_unique(array_filter(array_merge($banner_id ? [$banner_id] : [], $image_ids))));
+$showroom_id     = $banner_id ?: ($image_ids[0] ?? 0);
 $uid             = 'nl-showroom-' . get_the_ID();
 $circle_id       = 'nl-badge-circle-path-' . get_the_ID();
-$thumb_ids       = array_slice($showroom_ids, 1);
-$use_placeholder = empty($showroom_ids) && function_exists('wc_placeholder_img_src');
+$use_placeholder = ! $showroom_id && function_exists('wc_placeholder_img_src');
 ?>
 <section id="<?php echo esc_attr($uid); ?>" class="nl-showroom-section" aria-label="Showroom del producto">
   <div class="nl-image-container">
@@ -356,15 +355,15 @@ $use_placeholder = empty($showroom_ids) && function_exists('wc_placeholder_img_s
         <img src="<?php echo esc_url( wc_placeholder_img_src('full') ); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" />
         <div class="nl-overlay"></div>
       </div>
-    <?php else: foreach ($showroom_ids as $i => $att_id): ?>
-      <div class="nl-main-image<?php echo $i===0 ? ' active':''; ?>" data-index="<?php echo esc_attr($i); ?>">
-        <?php echo wp_get_attachment_image($att_id,'full',false,[
-          'alt'=>trim(get_post_meta($att_id,'_wp_attachment_image_alt',true)) ?: get_the_title(),
-          'loading'=>$i===0?'eager':'lazy','decoding'=>'async'
+    <?php elseif ($showroom_id): ?>
+      <div class="nl-main-image active" data-index="0">
+        <?php echo wp_get_attachment_image($showroom_id,'full',false,[
+          'alt'=>trim(get_post_meta($showroom_id,'_wp_attachment_image_alt',true)) ?: get_the_title(),
+          'loading'=>'eager','decoding'=>'async'
         ]); ?>
         <div class="nl-overlay"></div>
       </div>
-    <?php endforeach; endif; ?>
+    <?php endif; ?>
   </div>
 
  
@@ -392,6 +391,7 @@ $use_placeholder = empty($showroom_ids) && function_exists('wc_placeholder_img_s
 (function(){
   var root = document.getElementById('<?php echo esc_js($uid); ?>');
   if(!root) return;
+  return;
 
   var thumbs = root.querySelectorAll('.nl-thumbnail');
   var mains  = root.querySelectorAll('.nl-main-image');
@@ -492,12 +492,14 @@ $use_placeholder = empty($showroom_ids) && function_exists('wc_placeholder_img_s
  *  INFO PRODUCTO (título, desc, precio, add to cart + galería thumbs)
  * ======================================================= */
 $image_ids  = nl_get_product_image_ids($product);
-$main_id    = $image_ids[0] ?? 0;
-$thumb_ids  = array_slice($image_ids, 1, 4);
+$gallery_image_ids = array_values(array_diff($image_ids, $showroom_id ? [$showroom_id] : []));
+$main_id    = $gallery_image_ids[0] ?? 0;
+$thumb_ids  = $gallery_image_ids;
+$main_full  = $main_id ? wp_get_attachment_image_url($main_id, 'full') : '';
 
 $main_html  = $main_id
   ? wp_get_attachment_image($main_id, 'large', false, [
-      'class'=>'info-product-main-image','id'=>'mainImage',
+      'class'=>'info-product-main-image','id'=>'mainImage','data-full'=>$main_full,
       'alt'=>get_the_title(),'decoding'=>'async','loading'=>'eager'
     ])
   : '<img id="mainImage" class="info-product-main-image" src="'.esc_url(wc_placeholder_img_src()).'" alt="'.esc_attr(get_the_title()).'">';
@@ -900,12 +902,13 @@ if ( $product->is_type('variable') ) {
         <div class="info-product-thumbnails">
           <?php foreach ($thumb_ids as $i => $att_id):
             $large = wp_get_attachment_image_url($att_id, 'large');
+            $full  = wp_get_attachment_image_url($att_id, 'full');
             $thumb = wp_get_attachment_image_url($att_id, 'woocommerce_gallery_thumbnail');
-            $alt   = trim(get_post_meta($att_id, '_wp_attachment_image_alt', true)) ?: $title . ' vista ' . ($i+2);
+            $alt   = trim(get_post_meta($att_id, '_wp_attachment_image_alt', true)) ?: $title . ' vista ' . ($i+1);
           ?>
-          <div class="info-product-thumbnail<?php echo $i===0 ? ' active' : ''; ?>" data-large="<?php echo esc_url($large); ?>" data-index="<?php echo esc_attr($i+1); ?>">
+          <button type="button" class="info-product-thumbnail<?php echo $i===0 ? ' active' : ''; ?>" data-large="<?php echo esc_url($large); ?>" data-full="<?php echo esc_url($full); ?>" data-alt="<?php echo esc_attr($alt); ?>" data-index="<?php echo esc_attr($i+1); ?>" aria-label="<?php echo esc_attr('Ver ' . $alt); ?>" aria-current="<?php echo $i===0 ? 'true' : 'false'; ?>">
             <img src="<?php echo esc_url($thumb); ?>" alt="<?php echo esc_attr($alt); ?>">
-          </div>
+          </button>
           <?php endforeach; ?>
         </div>
       <?php endif; ?>
@@ -913,19 +916,68 @@ if ( $product->is_type('variable') ) {
   </div>
 </div>
 
+<div class="info-product-lightbox" id="infoProductLightbox" hidden>
+  <button class="info-product-lightbox-close" type="button" aria-label="Cerrar imagen ampliada">&times;</button>
+  <img class="info-product-lightbox-image" src="" alt="">
+</div>
+
 <script>
 (function(){
-  var main = document.getElementById('mainImage');
+  var root = document.querySelector('.info-product-gallery');
+  if(!root) return;
+  var main = root.querySelector('#mainImage');
   if(!main) return;
-  var thumbs = document.querySelectorAll('.info-product-thumbnail');
+  var zoom = root.querySelector('.info-product-zoom-button');
+  var thumbs = root.querySelectorAll('.info-product-thumbnail');
+  var lightbox = document.getElementById('infoProductLightbox');
+  var lightboxImg = lightbox ? lightbox.querySelector('.info-product-lightbox-image') : null;
+  var lightboxClose = lightbox ? lightbox.querySelector('.info-product-lightbox-close') : null;
+
+  function setMainFromThumb(thumb){
+    var url = thumb.getAttribute('data-large');
+    if(!url) return;
+    thumbs.forEach(function(x){
+      x.classList.remove('active');
+      x.setAttribute('aria-current', 'false');
+    });
+    thumb.classList.add('active');
+    thumb.setAttribute('aria-current', 'true');
+    main.src = url;
+    main.removeAttribute('srcset');
+    main.removeAttribute('sizes');
+    main.setAttribute('data-full', thumb.getAttribute('data-full') || url);
+    main.alt = thumb.getAttribute('data-alt') || main.alt;
+  }
+
   thumbs.forEach(function(t){
     t.addEventListener('click', function(){
-      var url = this.getAttribute('data-large');
-      if(!url) return;
-      thumbs.forEach(function(x){ x.classList.remove('active'); });
-      this.classList.add('active');
-      main.src = url;
+      setMainFromThumb(this);
     });
+  });
+
+  function closeLightbox(){
+    if(!lightbox) return;
+    lightbox.hidden = true;
+    document.documentElement.classList.remove('info-product-lightbox-open');
+  }
+
+  if(zoom && lightbox && lightboxImg){
+    zoom.addEventListener('click', function(){
+      lightboxImg.src = main.getAttribute('data-full') || main.currentSrc || main.src;
+      lightboxImg.alt = main.alt || '';
+      lightbox.hidden = false;
+      document.documentElement.classList.add('info-product-lightbox-open');
+    });
+  }
+
+  if(lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+  if(lightbox) {
+    lightbox.addEventListener('click', function(e){
+      if(e.target === lightbox) closeLightbox();
+    });
+  }
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeLightbox();
   });
 })();
 </script>

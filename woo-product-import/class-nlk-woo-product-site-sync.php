@@ -20,6 +20,7 @@ class NLK_Woo_Product_Site_Sync
 	const IMAGE_SOURCE_META_KEY = '_nlk_new_webp_source_file';
 
 	protected static $image_map = null;
+	protected static $matched_image_paths = array();
 
 	public static function init()
 	{
@@ -264,9 +265,10 @@ class NLK_Woo_Product_Site_Sync
 
 		$stats = self::empty_stats();
 		foreach ($products as $product) {
-			self::sync_product_images_from_dir($product->get_id(), $product->get_name(), $images_dir, $dry_run, $stats);
+			self::sync_product_images_from_dir($product->get_id(), $product->get_name(), $product->get_slug(), $images_dir, $dry_run, $stats);
 		}
 
+		self::report_unmatched_images($images_dir);
 		self::log_stats('Imagenes procesadas', $stats);
 	}
 
@@ -401,6 +403,7 @@ class NLK_Woo_Product_Site_Sync
 							'id'   => (int) $term->term_id,
 							'name' => $term->name,
 							'slug' => $term->slug,
+							'image' => self::export_term_image_data((int) $term->term_id),
 						);
 					}
 				}
@@ -422,6 +425,59 @@ class NLK_Woo_Product_Site_Sync
 		}
 
 		return $out;
+	}
+
+	protected static function export_term_image_data($term_id)
+	{
+		$term_id = absint($term_id);
+		if (! $term_id) {
+			return array();
+		}
+
+		foreach (array('thumbnail_id', 'image_id', 'product_attribute_image', 'swatch_image', 'term_image', 'image') as $meta_key) {
+			$value = get_term_meta($term_id, $meta_key, true);
+			$image = self::normalize_exported_image_value($value, $meta_key);
+			if (! empty($image['url'])) {
+				return $image;
+			}
+		}
+
+		if (function_exists('get_field')) {
+			foreach (array('imagen', 'image', 'swatch', 'thumbnail') as $field_key) {
+				$value = get_field($field_key, 'term_' . $term_id);
+				$image = self::normalize_exported_image_value($value, $field_key);
+				if (! empty($image['url'])) {
+					return $image;
+				}
+			}
+		}
+
+		return array();
+	}
+
+	protected static function normalize_exported_image_value($value, $source_key)
+	{
+		if (is_numeric($value) && (int) $value > 0) {
+			$url = wp_get_attachment_image_url((int) $value, 'full');
+			return $url ? array('url' => $url, 'source_key' => $source_key) : array();
+		}
+
+		if (is_string($value) && preg_match('~^https?://~', $value)) {
+			return array('url' => esc_url_raw($value), 'source_key' => $source_key);
+		}
+
+		if (is_array($value)) {
+			if (! empty($value['url'])) {
+				return array('url' => esc_url_raw($value['url']), 'source_key' => $source_key);
+			}
+			if (! empty($value['ID']) || ! empty($value['id'])) {
+				$id = ! empty($value['ID']) ? (int) $value['ID'] : (int) $value['id'];
+				$url = wp_get_attachment_image_url($id, 'full');
+				return $url ? array('url' => $url, 'source_key' => $source_key) : array();
+			}
+		}
+
+		return array();
 	}
 
 	protected static function export_product_taxonomies($product_id)
@@ -459,7 +515,7 @@ class NLK_Woo_Product_Site_Sync
 
 		$dry_run    = ! empty($assoc_args['dry-run']);
 		$images_dir = self::resolve_images_dir($assoc_args);
-		$name_map   = self::build_target_name_map();
+		$product_map = self::build_target_product_map();
 		$stats      = self::empty_stats();
 
 		foreach ($payload['products'] as $record) {
@@ -468,22 +524,27 @@ class NLK_Woo_Product_Site_Sync
 				continue;
 			}
 
-			$key         = self::normalize_name_key($record['name']);
-			$existing_id = isset($name_map[ $key ]) ? (int) $name_map[ $key ] : 0;
+			$match_keys  = self::product_match_keys_from_record($record);
+			$existing_id = self::find_product_id_in_map($product_map, $match_keys);
 
 			if ($existing_id) {
 				self::update_existing_product_from_record($existing_id, $record, $dry_run, $stats);
-				self::sync_product_images_from_dir($existing_id, $record['name'], $images_dir, $dry_run, $stats);
+				self::sync_product_images_from_dir($existing_id, $record['name'], get_post_field('post_name', $existing_id), $images_dir, $dry_run, $stats);
 				continue;
 			}
 
 			$product_id = self::create_product_from_record($record, $dry_run, $stats);
 			if ($product_id) {
-				$name_map[ $key ] = $product_id;
-				self::sync_product_images_from_dir($product_id, $record['name'], $images_dir, $dry_run, $stats);
+				foreach ($match_keys as $key) {
+					$product_map[ $key ] = $product_id;
+				}
+				self::sync_product_images_from_dir($product_id, $record['name'], get_post_field('post_name', $product_id), $images_dir, $dry_run, $stats);
+			} elseif ($dry_run) {
+				self::sync_product_images_from_dir(0, $record['name'], isset($record['slug']) ? (string) $record['slug'] : '', $images_dir, true, $stats);
 			}
 		}
 
+		self::report_unmatched_images($images_dir);
 		self::log_stats($dry_run ? 'Vista previa terminada' : 'Importacion terminada', $stats);
 	}
 
@@ -633,6 +694,7 @@ class NLK_Woo_Product_Site_Sync
 				$term_id = self::ensure_term_from_record($name, $option);
 				if ($term_id) {
 					$options[] = $term_id;
+					self::sync_attribute_term_image($term_id, $option);
 				}
 			}
 
@@ -794,12 +856,120 @@ class NLK_Woo_Product_Site_Sync
 		return isset($created['term_id']) ? (int) $created['term_id'] : 0;
 	}
 
-	protected static function sync_product_images_from_dir($product_id, $product_name, $images_dir, $dry_run, &$stats)
+	protected static function sync_attribute_term_image($term_id, $option)
 	{
-		$matches = self::find_image_matches($product_name, $images_dir);
-		if (empty($matches)) {
+		$term_id = absint($term_id);
+		if (! $term_id || empty($option['image']['url'])) {
 			return;
 		}
+
+		$term = get_term($term_id);
+		$title = $term && ! is_wp_error($term) ? $term->name : 'attribute image';
+		$attachment_id = self::import_remote_attachment((string) $option['image']['url'], 0, $title);
+		if (! $attachment_id) {
+			return;
+		}
+
+		foreach (array('thumbnail_id', 'image_id', 'product_attribute_image', 'swatch_image', 'term_image', 'image') as $meta_key) {
+			update_term_meta($term_id, $meta_key, $attachment_id);
+		}
+	}
+
+	protected static function import_remote_attachment($url, $post_id, $title)
+	{
+		$url = esc_url_raw((string) $url);
+		if (! $url) {
+			return 0;
+		}
+
+		$existing = self::find_attachment_by_source_url($url);
+		if ($existing) {
+			return $existing;
+		}
+
+		if (! function_exists('media_handle_sideload')) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+
+		$tmp = download_url($url, 60);
+		if (is_wp_error($tmp)) {
+			return 0;
+		}
+
+		$filename = sanitize_file_name(wp_basename(wp_parse_url($url, PHP_URL_PATH)));
+		if (! $filename) {
+			$filename = sanitize_title($title) . '.jpg';
+		}
+
+		$filetype = wp_check_filetype($filename);
+		$file = array(
+			'name'     => $filename,
+			'type'     => ! empty($filetype['type']) ? $filetype['type'] : 'image/jpeg',
+			'tmp_name' => $tmp,
+			'error'    => 0,
+			'size'     => filesize($tmp),
+		);
+
+		$attachment_id = media_handle_sideload($file, $post_id, $title);
+		if (is_wp_error($attachment_id)) {
+			@unlink($tmp);
+			return 0;
+		}
+
+		update_post_meta($attachment_id, '_nlk_source_media_url', $url);
+		update_post_meta($attachment_id, '_wp_attachment_image_alt', $title);
+
+		return (int) $attachment_id;
+	}
+
+	protected static function find_attachment_by_source_url($url)
+	{
+		global $wpdb;
+
+		$url = esc_url_raw((string) $url);
+		if (! $url) {
+			return 0;
+		}
+
+		$found = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_nlk_source_media_url' AND meta_value = %s LIMIT 1",
+				$url
+			)
+		);
+
+		if ($found) {
+			return $found;
+		}
+
+		$basename = sanitize_file_name(wp_basename(wp_parse_url($url, PHP_URL_PATH)));
+		if (! $basename) {
+			return 0;
+		}
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta}
+				WHERE meta_key = '_wp_attached_file'
+				AND (meta_value = %s OR meta_value LIKE %s)
+				ORDER BY post_id DESC
+				LIMIT 1",
+				$basename,
+				'%/' . $wpdb->esc_like($basename)
+			)
+		);
+	}
+
+	protected static function sync_product_images_from_dir($product_id, $product_name, $product_slug, $images_dir, $dry_run, &$stats)
+	{
+		$matches = self::find_image_matches($product_name, $product_slug, $images_dir);
+		if (! self::has_image_matches($matches)) {
+			return;
+		}
+
+		self::mark_image_matches($product_id, $product_name, $matches);
 
 		if ($dry_run) {
 			foreach ($matches as $kind => $paths) {
@@ -837,14 +1007,28 @@ class NLK_Woo_Product_Site_Sync
 		}
 	}
 
-	protected static function find_image_matches($product_name, $images_dir)
+	protected static function find_image_matches($product_name, $product_slug, $images_dir)
 	{
 		$map = self::get_image_map($images_dir);
-		$key = self::normalize_name_key($product_name);
+		$keys = array_values(
+			array_unique(
+				array_filter(
+					array(
+						self::normalize_name_key($product_name),
+						self::normalize_slug_key($product_name),
+						self::normalize_slug_key($product_slug),
+					)
+				)
+			)
+		);
 
-		return isset($map[ $key ])
-			? $map[ $key ]
-			: array('featured' => array(), 'banner' => array(), 'detail' => array());
+		foreach ($keys as $key) {
+			if (isset($map['by_key'][ $key ])) {
+				return $map['by_key'][ $key ];
+			}
+		}
+
+		return array('featured' => array(), 'banner' => array(), 'detail' => array());
 	}
 
 	protected static function get_image_map($images_dir)
@@ -853,7 +1037,10 @@ class NLK_Woo_Product_Site_Sync
 			return self::$image_map;
 		}
 
-		$map = array();
+		$map = array(
+			'by_key' => array(),
+			'files'  => array(),
+		);
 		if (! is_dir($images_dir)) {
 			self::$image_map = $map;
 			return $map;
@@ -872,15 +1059,104 @@ class NLK_Woo_Product_Site_Sync
 				$stem = preg_replace('/_DETALLE(?:_\d+)?$/i', '', $stem);
 			}
 
-			$key = self::normalize_name_key($stem);
-			if (! isset($map[ $key ])) {
-				$map[ $key ] = array('featured' => array(), 'banner' => array(), 'detail' => array());
+			$keys = array_values(
+				array_unique(
+					array_filter(
+						array(
+							self::normalize_name_key($stem),
+							self::normalize_slug_key($stem),
+						)
+					)
+				)
+			);
+
+			$map['files'][] = array(
+				'path' => $path,
+				'stem' => $stem,
+				'kind' => $kind,
+				'slug_key' => self::normalize_slug_key($stem),
+			);
+
+			foreach ($keys as $key) {
+				if (! isset($map['by_key'][ $key ])) {
+					$map['by_key'][ $key ] = array('featured' => array(), 'banner' => array(), 'detail' => array());
+				}
+				$map['by_key'][ $key ][ $kind ][] = $path;
 			}
-			$map[ $key ][ $kind ][] = $path;
 		}
 
 		self::$image_map = $map;
 		return $map;
+	}
+
+	protected static function mark_image_matches($product_id, $product_name, $matches)
+	{
+		$files = array();
+
+		foreach ($matches as $kind => $paths) {
+			foreach ((array) $paths as $path) {
+				self::$matched_image_paths[ wp_normalize_path($path) ] = true;
+				$files[] = sprintf('%s:%s', $kind, wp_basename($path));
+			}
+		}
+
+		if (! empty($files) && defined('WP_CLI') && WP_CLI) {
+			WP_CLI::log(sprintf('Imagenes matched | #%d %s | %s', $product_id, $product_name, implode(', ', $files)));
+		}
+	}
+
+	protected static function has_image_matches($matches)
+	{
+		foreach ((array) $matches as $paths) {
+			if (! empty($paths)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	protected static function report_unmatched_images($images_dir)
+	{
+		if (! defined('WP_CLI') || ! WP_CLI) {
+			return;
+		}
+
+		$map = self::get_image_map($images_dir);
+		if (empty($map['files'])) {
+			WP_CLI::warning('No encontre imagenes en: ' . $images_dir);
+			return;
+		}
+
+		$unmatched = array();
+		foreach ($map['files'] as $file) {
+			if (empty(self::$matched_image_paths[ wp_normalize_path($file['path']) ])) {
+				$unmatched[] = $file;
+			}
+		}
+
+		if (empty($unmatched)) {
+			WP_CLI::log('Todas las imagenes de new-webp tuvieron match.');
+			return;
+		}
+
+		$candidates = self::build_product_slug_candidates();
+		WP_CLI::warning(sprintf('Imagenes sin match: %d', count($unmatched)));
+
+		foreach (array_slice($unmatched, 0, 40) as $file) {
+			$suggestion = self::closest_slug_candidate($file['slug_key'], $candidates);
+			WP_CLI::warning(
+				sprintf(
+					'- %s%s',
+					wp_basename($file['path']),
+					$suggestion ? ' | posible producto: ' . $suggestion : ''
+				)
+			);
+		}
+
+		if (count($unmatched) > 40) {
+			WP_CLI::warning(sprintf('... y %d imagenes mas sin match.', count($unmatched) - 40));
+		}
 	}
 
 	protected static function import_attachment($path, $post_id, $title)
@@ -971,7 +1247,7 @@ class NLK_Woo_Product_Site_Sync
 		}
 	}
 
-	protected static function build_target_name_map()
+	protected static function build_target_product_map()
 	{
 		$map = array();
 		$ids = get_posts(
@@ -984,13 +1260,55 @@ class NLK_Woo_Product_Site_Sync
 		);
 
 		foreach ($ids as $id) {
-			$key = self::normalize_name_key(get_the_title($id));
-			if ($key && ! isset($map[ $key ])) {
-				$map[ $key ] = (int) $id;
+			foreach (self::product_match_keys_from_values(get_the_title($id), get_post_field('post_name', $id)) as $key) {
+				if ($key && ! isset($map[ $key ])) {
+					$map[ $key ] = (int) $id;
+				}
 			}
 		}
 
 		return $map;
+	}
+
+	protected static function product_match_keys_from_record($record)
+	{
+		return self::product_match_keys_from_values(
+			isset($record['name']) ? (string) $record['name'] : '',
+			isset($record['slug']) ? (string) $record['slug'] : ''
+		);
+	}
+
+	protected static function product_match_keys_from_values($name, $slug)
+	{
+		$keys = array();
+
+		$slug_key = self::normalize_slug_key($slug);
+		if ($slug_key) {
+			$keys[] = 'slug:' . $slug_key;
+		}
+
+		$name_slug_key = self::normalize_slug_key($name);
+		if ($name_slug_key) {
+			$keys[] = 'slug:' . $name_slug_key;
+		}
+
+		$name_key = self::normalize_name_key($name);
+		if ($name_key) {
+			$keys[] = 'name:' . $name_key;
+		}
+
+		return array_values(array_unique($keys));
+	}
+
+	protected static function find_product_id_in_map($product_map, $keys)
+	{
+		foreach ((array) $keys as $key) {
+			if (isset($product_map[ $key ])) {
+				return (int) $product_map[ $key ];
+			}
+		}
+
+		return 0;
 	}
 
 	protected static function normalize_name_key($value)
@@ -1001,6 +1319,58 @@ class NLK_Woo_Product_Site_Sync
 		$value = preg_replace('/[^a-z0-9]+/', '', $value);
 
 		return trim($value);
+	}
+
+	protected static function normalize_slug_key($value)
+	{
+		return sanitize_title(remove_accents(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+	}
+
+	protected static function build_product_slug_candidates()
+	{
+		$candidates = array();
+		$ids = get_posts(
+			array(
+				'post_type'      => 'product',
+				'post_status'    => array('publish', 'private', 'draft', 'pending'),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+			)
+		);
+
+		foreach ($ids as $id) {
+			$title = get_the_title($id);
+			$slug = get_post_field('post_name', $id);
+
+			foreach (array(self::normalize_slug_key($title), self::normalize_slug_key($slug)) as $key) {
+				if ($key && ! isset($candidates[ $key ])) {
+					$candidates[ $key ] = sprintf('#%d %s (%s)', $id, $title, $slug);
+				}
+			}
+		}
+
+		return $candidates;
+	}
+
+	protected static function closest_slug_candidate($needle, $candidates)
+	{
+		$needle = (string) $needle;
+		if ('' === $needle || empty($candidates)) {
+			return '';
+		}
+
+		$best_label = '';
+		$best_score = PHP_INT_MAX;
+
+		foreach ($candidates as $candidate => $label) {
+			$score = levenshtein($needle, (string) $candidate);
+			if ($score < $best_score) {
+				$best_score = $score;
+				$best_label = $label;
+			}
+		}
+
+		return $best_score <= max(2, (int) floor(strlen($needle) * 0.25)) ? $best_label : '';
 	}
 
 	protected static function resolve_images_dir($assoc_args)
