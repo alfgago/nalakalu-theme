@@ -184,10 +184,33 @@ if (!function_exists('nl_get_collection_name')) {
   }
 }
 
+if (!function_exists('nl_get_product_banner_image_id')) {
+  function nl_get_product_banner_image_id($product) {
+    $post_id = $product->get_id();
+    $value = 0;
+
+    if (function_exists('get_field')) {
+      $value = get_field('product_banner_image', $post_id) ?: get_field('banner_image', $post_id);
+    }
+
+    if (!$value) {
+      $value = get_post_meta($post_id, 'product_banner_image', true);
+    }
+
+    if (is_array($value) && !empty($value['ID'])) return (int) $value['ID'];
+    if (is_object($value) && !empty($value->ID)) return (int) $value->ID;
+    if (is_numeric($value)) return (int) $value;
+    if (is_string($value) && preg_match('~^https?://~', $value)) return (int) attachment_url_to_postid($value);
+
+    return 0;
+  }
+}
+
 if (!function_exists('nl_get_product_image_ids')) {
   // Versión robusta (placeholder + galería + variaciones + adjuntos + ACF opcional, limit 5)
   function nl_get_product_image_ids($product){
     $ids = [];
+    $banner_id = function_exists('nl_get_product_banner_image_id') ? nl_get_product_banner_image_id($product) : 0;
 
     // destacada
     $main_id = get_post_thumbnail_id($product->get_id());
@@ -230,6 +253,9 @@ if (!function_exists('nl_get_product_image_ids')) {
     }
 
     $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    if ($banner_id) {
+      $ids = array_values(array_diff($ids, [(int)$banner_id]));
+    }
     return array_slice($ids, 0, 5);
   }
 }
@@ -316,10 +342,12 @@ $collection_name = nl_get_collection_name($product);
 $badge_text      = 'Disponible ahora en ' . $collection_name;
 
 $image_ids       = nl_get_product_image_ids($product);
+$banner_id       = nl_get_product_banner_image_id($product);
+$showroom_ids    = array_values(array_unique(array_filter(array_merge($banner_id ? [$banner_id] : [], $image_ids))));
 $uid             = 'nl-showroom-' . get_the_ID();
 $circle_id       = 'nl-badge-circle-path-' . get_the_ID();
-$thumb_ids       = array_slice($image_ids, 1);
-$use_placeholder = empty($image_ids) && function_exists('wc_placeholder_img_src');
+$thumb_ids       = array_slice($showroom_ids, 1);
+$use_placeholder = empty($showroom_ids) && function_exists('wc_placeholder_img_src');
 ?>
 <section id="<?php echo esc_attr($uid); ?>" class="nl-showroom-section" aria-label="Showroom del producto">
   <div class="nl-image-container">
@@ -328,7 +356,7 @@ $use_placeholder = empty($image_ids) && function_exists('wc_placeholder_img_src'
         <img src="<?php echo esc_url( wc_placeholder_img_src('full') ); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" />
         <div class="nl-overlay"></div>
       </div>
-    <?php else: foreach ($image_ids as $i => $att_id): ?>
+    <?php else: foreach ($showroom_ids as $i => $att_id): ?>
       <div class="nl-main-image<?php echo $i===0 ? ' active':''; ?>" data-index="<?php echo esc_attr($i); ?>">
         <?php echo wp_get_attachment_image($att_id,'full',false,[
           'alt'=>trim(get_post_meta($att_id,'_wp_attachment_image_alt',true)) ?: get_the_title(),
