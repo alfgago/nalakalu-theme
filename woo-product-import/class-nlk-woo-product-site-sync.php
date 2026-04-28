@@ -238,7 +238,16 @@ class NLK_Woo_Product_Site_Sync
 	}
 
 	/**
-	 * Imports PRODUCTNAME.webp / PRODUCTNAME_AMBIENTE.webp / PRODUCTNAME_DETALLE.webp images.
+	 * Imports product images from a local folder using the suffix convention:
+	 *   PRODUCTNAME.webp or PRODUCTNAME_1.webp -> featured (post thumbnail)
+	 *   PRODUCTNAME_2.webp                     -> detalle (gallery)
+	 *   PRODUCTNAME_3.webp                     -> ambiente (banner / ACF field)
+	 *
+	 * For each kind that has a new file, the product's existing assignment is replaced.
+	 * Old attachments that originated from this importer (tracked via _nlk_new_webp_source_file)
+	 * are deleted when no other post still references them. Manually-uploaded media is left
+	 * in the media library, just unlinked from the product. Kinds without a new file are
+	 * left untouched.
 	 *
 	 * ## OPTIONS
 	 *
@@ -971,40 +980,181 @@ class NLK_Woo_Product_Site_Sync
 
 		self::mark_image_matches($product_id, $product_name, $matches);
 
-		if ($dry_run) {
-			foreach ($matches as $kind => $paths) {
-				$stats['images_' . $kind] += count($paths);
+		// Dry-run for the "would create a new product" path (product_id = 0): just count.
+		if (! $product_id) {
+			foreach (array('featured', 'banner', 'detail') as $kind) {
+				if (! empty($matches[$kind][0])) {
+					$stats['images_' . $kind]++;
+				}
 			}
 			return;
 		}
 
-		if (! empty($matches['featured'][0])) {
-			$attachment_id = self::import_attachment($matches['featured'][0], $product_id, $product_name);
-			if ($attachment_id) {
-				set_post_thumbnail($product_id, $attachment_id);
-				$stats['images_featured']++;
+		foreach (array('featured', 'banner', 'detail') as $kind) {
+			if (! empty($matches[$kind][0])) {
+				self::replace_kind_with_match($product_id, $product_name, $kind, $matches[$kind][0], $dry_run, $stats);
 			}
 		}
+	}
 
-		if (! empty($matches['banner'][0])) {
-			$attachment_id = self::import_attachment($matches['banner'][0], $product_id, $product_name . ' banner');
-			if ($attachment_id) {
-				self::update_banner_image($product_id, $attachment_id);
-				$stats['images_banner']++;
-			}
-		}
+	/**
+	 * Sideloads $new_path for $kind on $product_id, replacing the existing assignment.
+	 * Old attachments that came from this importer (have IMAGE_SOURCE_META_KEY) and are
+	 * not referenced by any other post are deleted. Manually-uploaded old attachments are
+	 * left in the media library, just unlinked from this product.
+	 */
+	protected static function replace_kind_with_match($product_id, $product_name, $kind, $new_path, $dry_run, &$stats)
+	{
+		$old_ids = self::current_attachment_ids_for_kind($product_id, $kind);
 
-		if (! empty($matches['detail'])) {
-			$gallery_ids = array_filter(array_map('absint', explode(',', (string) get_post_meta($product_id, '_product_image_gallery', true))));
-			foreach ($matches['detail'] as $path) {
-				$attachment_id = self::import_attachment($path, $product_id, $product_name . ' detalle');
-				if ($attachment_id && ! in_array($attachment_id, $gallery_ids, true)) {
-					$gallery_ids[] = $attachment_id;
-					$stats['images_detail']++;
+		if ($dry_run) {
+			$stats['images_' . $kind]++;
+			foreach ($old_ids as $old_id) {
+				$stats['images_replaced']++;
+				if (self::should_delete_old_attachment($old_id, $product_id)) {
+					$stats['images_deleted']++;
 				}
 			}
-			update_post_meta($product_id, '_product_image_gallery', implode(',', array_values(array_unique($gallery_ids))));
+			return;
 		}
+
+		$title  = $product_name . self::kind_title_suffix($kind);
+		$new_id = self::import_attachment($new_path, $product_id, $title);
+		if (! $new_id) {
+			return;
+		}
+
+		self::set_kind_attachment($product_id, $kind, $new_id);
+		$stats['images_' . $kind]++;
+
+		foreach ($old_ids as $old_id) {
+			if (! $old_id || (int) $old_id === (int) $new_id) {
+				continue;
+			}
+			$stats['images_replaced']++;
+			if (self::should_delete_old_attachment($old_id, $product_id)) {
+				wp_delete_attachment((int) $old_id, true);
+				$stats['images_deleted']++;
+			}
+		}
+	}
+
+	protected static function current_attachment_ids_for_kind($product_id, $kind)
+	{
+		$product_id = (int) $product_id;
+		if (! $product_id) {
+			return array();
+		}
+
+		if ('featured' === $kind) {
+			$id = (int) get_post_thumbnail_id($product_id);
+			return $id ? array($id) : array();
+		}
+
+		if ('banner' === $kind) {
+			$id = (int) get_post_meta($product_id, self::BANNER_META_KEY, true);
+			return $id ? array($id) : array();
+		}
+
+		if ('detail' === $kind) {
+			$raw = (string) get_post_meta($product_id, '_product_image_gallery', true);
+			$ids = array_filter(array_map('absint', explode(',', $raw)));
+			return array_values(array_unique($ids));
+		}
+
+		return array();
+	}
+
+	protected static function set_kind_attachment($product_id, $kind, $new_id)
+	{
+		$new_id = (int) $new_id;
+
+		if ('featured' === $kind) {
+			set_post_thumbnail($product_id, $new_id);
+			return;
+		}
+
+		if ('banner' === $kind) {
+			self::update_banner_image($product_id, $new_id);
+			return;
+		}
+
+		if ('detail' === $kind) {
+			update_post_meta($product_id, '_product_image_gallery', (string) $new_id);
+		}
+	}
+
+	protected static function kind_title_suffix($kind)
+	{
+		if ('banner' === $kind) {
+			return ' banner';
+		}
+		if ('detail' === $kind) {
+			return ' detalle';
+		}
+		return '';
+	}
+
+	protected static function should_delete_old_attachment($attachment_id, $product_id)
+	{
+		$attachment_id = (int) $attachment_id;
+		if (! $attachment_id) {
+			return false;
+		}
+
+		if ('' === (string) get_post_meta($attachment_id, self::IMAGE_SOURCE_META_KEY, true)) {
+			return false;
+		}
+
+		return ! self::attachment_referenced_elsewhere($attachment_id, $product_id);
+	}
+
+	protected static function attachment_referenced_elsewhere($attachment_id, $exclude_post_id)
+	{
+		global $wpdb;
+
+		$attachment_id    = (int) $attachment_id;
+		$exclude_post_id  = (int) $exclude_post_id;
+		if (! $attachment_id) {
+			return false;
+		}
+
+		$thumb_or_banner = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta}
+				 WHERE meta_key IN ('_thumbnail_id', %s)
+				   AND meta_value = %s
+				   AND post_id <> %d",
+				self::BANNER_META_KEY,
+				(string) $attachment_id,
+				$exclude_post_id
+			)
+		);
+		if ($thumb_or_banner > 0) {
+			return true;
+		}
+
+		$id_str  = (string) $attachment_id;
+		$gallery = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta}
+				 WHERE meta_key = '_product_image_gallery'
+				   AND post_id <> %d
+				   AND (
+					   meta_value = %s
+					   OR meta_value LIKE %s
+					   OR meta_value LIKE %s
+					   OR meta_value LIKE %s
+				   )",
+				$exclude_post_id,
+				$id_str,
+				$wpdb->esc_like($id_str . ',') . '%',
+				'%' . $wpdb->esc_like(',' . $id_str . ',') . '%',
+				'%' . $wpdb->esc_like(',' . $id_str)
+			)
+		);
+
+		return $gallery > 0;
 	}
 
 	protected static function find_image_matches($product_name, $product_slug, $images_dir)
@@ -1048,15 +1198,34 @@ class NLK_Woo_Product_Site_Sync
 
 		$files = glob(trailingslashit($images_dir) . '*.{webp,WEBP,web,WEB,jpg,JPG,jpeg,JPEG,png,PNG}', GLOB_BRACE);
 		foreach ((array) $files as $path) {
-			$stem = pathinfo($path, PATHINFO_FILENAME);
-			$kind = 'featured';
+			$original_stem = pathinfo($path, PATHINFO_FILENAME);
+			$stem          = $original_stem;
+			$kind          = null;
 
-			if (preg_match('/_AMBIENTE$/i', $stem)) {
-				$kind = 'banner';
-				$stem = preg_replace('/_AMBIENTE$/i', '', $stem);
-			} elseif (preg_match('/_DETALLE(?:_\d+)?$/i', $stem)) {
-				$kind = 'detail';
-				$stem = preg_replace('/_DETALLE(?:_\d+)?$/i', '', $stem);
+			if (preg_match('/^(.+)_([123])$/', $stem, $m)) {
+				$stem = $m[1];
+				$kind = ('1' === $m[2]) ? 'featured' : (('2' === $m[2]) ? 'detail' : 'banner');
+			} elseif (preg_match('/_(AMBIENTE|DETALLE)(?:_\d+)?$/i', $stem)) {
+				// Legacy convention - no longer recognized.
+				$kind = null;
+			} elseif (preg_match('/_(\d+_\d+|[4-9]|\d{2,})$/', $stem)) {
+				// Numeric suffix outside the supported _1 / _2 / _3 range.
+				$kind = null;
+			} else {
+				// No recognized trailing suffix - whole stem is the product name.
+				$kind = 'featured';
+			}
+
+			$map['files'][] = array(
+				'path'          => $path,
+				'stem'          => $stem,
+				'original_stem' => $original_stem,
+				'kind'          => $kind,
+				'slug_key'      => self::normalize_slug_key($stem),
+			);
+
+			if (null === $kind) {
+				continue;
 			}
 
 			$keys = array_values(
@@ -1068,13 +1237,6 @@ class NLK_Woo_Product_Site_Sync
 						)
 					)
 				)
-			);
-
-			$map['files'][] = array(
-				'path' => $path,
-				'stem' => $stem,
-				'kind' => $kind,
-				'slug_key' => self::normalize_slug_key($stem),
 			);
 
 			foreach ($keys as $key) {
@@ -1144,14 +1306,19 @@ class NLK_Woo_Product_Site_Sync
 		WP_CLI::warning(sprintf('Imagenes sin match: %d', count($unmatched)));
 
 		foreach (array_slice($unmatched, 0, 40) as $file) {
-			$suggestion = self::closest_slug_candidate($file['slug_key'], $candidates);
-			WP_CLI::warning(
-				sprintf(
-					'- %s%s',
-					wp_basename($file['path']),
-					$suggestion ? ' | posible producto: ' . $suggestion : ''
-				)
-			);
+			$hint = '';
+			$original = isset($file['original_stem']) ? (string) $file['original_stem'] : '';
+			if ($original && preg_match('/_(AMBIENTE|DETALLE)(?:_\d+)?$/i', $original)) {
+				$hint = ' | sufijo legacy, renombra a _3 (ambiente) o _2 (detalle)';
+			} elseif ($original && preg_match('/_(\d+_\d+|[4-9]|\d{2,})$/', $original)) {
+				$hint = ' | sufijo numerico no soportado, usa _1, _2 o _3';
+			} else {
+				$suggestion = self::closest_slug_candidate($file['slug_key'], $candidates);
+				if ($suggestion) {
+					$hint = ' | posible producto: ' . $suggestion;
+				}
+			}
+			WP_CLI::warning(sprintf('- %s%s', wp_basename($file['path']), $hint));
 		}
 
 		if (count($unmatched) > 40) {
@@ -1400,6 +1567,8 @@ class NLK_Woo_Product_Site_Sync
 			'images_featured'    => 0,
 			'images_banner'      => 0,
 			'images_detail'      => 0,
+			'images_replaced'    => 0,
+			'images_deleted'     => 0,
 		);
 	}
 
@@ -1407,7 +1576,7 @@ class NLK_Woo_Product_Site_Sync
 	{
 		WP_CLI::success(
 			sprintf(
-				'%s. created=%d | updated=%d | skipped=%d | variations_created=%d | variations_updated=%d | featured=%d | banners=%d | detail=%d',
+				'%s. created=%d | updated=%d | skipped=%d | variations_created=%d | variations_updated=%d | featured=%d | banners=%d | detail=%d | replaced=%d | deleted=%d',
 				$label,
 				$stats['created'],
 				$stats['updated'],
@@ -1416,7 +1585,9 @@ class NLK_Woo_Product_Site_Sync
 				$stats['variations_updated'],
 				$stats['images_featured'],
 				$stats['images_banner'],
-				$stats['images_detail']
+				$stats['images_detail'],
+				$stats['images_replaced'],
+				$stats['images_deleted']
 			)
 		);
 	}

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l d:/vscode/nalakalu-theme/woo-product-import/class-nlk-woo-product-site-sync.php)"
+    ]
+  }
+}
