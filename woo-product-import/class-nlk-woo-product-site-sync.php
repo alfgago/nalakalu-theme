@@ -172,6 +172,9 @@ class NLK_Woo_Product_Site_Sync
 	 * [--images-dir=<dir>]
 	 * : Directory on this site containing PRODUCTNAME.webp files. Default: wp-content/uploads/new-webp.
 	 *
+	 * [--skip-images]
+	 * : Do not import or replace product images, galleries, banners, or attribute term images.
+	 *
 	 * [--dry-run]
 	 * : Report intended changes without saving products or importing media.
 	 *
@@ -216,6 +219,9 @@ class NLK_Woo_Product_Site_Sync
 	 *
 	 * [--images-dir=<dir>]
 	 * : Directory on this site containing PRODUCTNAME.webp files. Default: wp-content/uploads/new-webp.
+	 *
+	 * [--skip-images]
+	 * : Do not import or replace product images, galleries, banners, or attribute term images.
 	 *
 	 * [--dry-run]
 	 * : Report intended changes without saving products or importing media.
@@ -524,6 +530,7 @@ class NLK_Woo_Product_Site_Sync
 
 		$dry_run    = ! empty($assoc_args['dry-run']);
 		$images_dir = self::resolve_images_dir($assoc_args);
+		$sync_images = empty($assoc_args['skip-images']);
 		$product_map = self::build_target_product_map();
 		$stats      = self::empty_stats();
 
@@ -537,27 +544,33 @@ class NLK_Woo_Product_Site_Sync
 			$existing_id = self::find_product_id_in_map($product_map, $match_keys);
 
 			if ($existing_id) {
-				self::update_existing_product_from_record($existing_id, $record, $dry_run, $stats);
-				self::sync_product_images_from_dir($existing_id, $record['name'], get_post_field('post_name', $existing_id), $images_dir, $dry_run, $stats);
+				self::update_existing_product_from_record($existing_id, $record, $dry_run, $sync_images, $stats);
+				if ($sync_images) {
+					self::sync_product_images_from_dir($existing_id, $record['name'], get_post_field('post_name', $existing_id), $images_dir, $dry_run, $stats);
+				}
 				continue;
 			}
 
-			$product_id = self::create_product_from_record($record, $dry_run, $stats);
+			$product_id = self::create_product_from_record($record, $dry_run, $sync_images, $stats);
 			if ($product_id) {
 				foreach ($match_keys as $key) {
 					$product_map[ $key ] = $product_id;
 				}
-				self::sync_product_images_from_dir($product_id, $record['name'], get_post_field('post_name', $product_id), $images_dir, $dry_run, $stats);
-			} elseif ($dry_run) {
+				if ($sync_images) {
+					self::sync_product_images_from_dir($product_id, $record['name'], get_post_field('post_name', $product_id), $images_dir, $dry_run, $stats);
+				}
+			} elseif ($dry_run && $sync_images) {
 				self::sync_product_images_from_dir(0, $record['name'], isset($record['slug']) ? (string) $record['slug'] : '', $images_dir, true, $stats);
 			}
 		}
 
-		self::report_unmatched_images($images_dir);
+		if ($sync_images) {
+			self::report_unmatched_images($images_dir);
+		}
 		self::log_stats($dry_run ? 'Vista previa terminada' : 'Importacion terminada', $stats);
 	}
 
-	protected static function update_existing_product_from_record($product_id, $record, $dry_run, &$stats)
+	protected static function update_existing_product_from_record($product_id, $record, $dry_run, $sync_images, &$stats)
 	{
 		$product = wc_get_product($product_id);
 		if (! $product) {
@@ -574,7 +587,7 @@ class NLK_Woo_Product_Site_Sync
 		}
 
 		self::apply_prices($product, $record);
-		self::apply_product_attributes($product, $record);
+		self::apply_product_attributes($product, $record, $sync_images);
 		$product->save();
 
 		if ($product->is_type('variable')) {
@@ -585,7 +598,7 @@ class NLK_Woo_Product_Site_Sync
 		$stats['updated']++;
 	}
 
-	protected static function create_product_from_record($record, $dry_run, &$stats)
+	protected static function create_product_from_record($record, $dry_run, $sync_images, &$stats)
 	{
 		if ($dry_run) {
 			$stats['created']++;
@@ -613,10 +626,10 @@ class NLK_Woo_Product_Site_Sync
 		self::apply_prices($product, $record);
 		self::apply_inventory($product, $record);
 		self::apply_shipping_fields($product, $record);
-		self::apply_product_attributes($product, $record);
+		self::apply_product_attributes($product, $record, $sync_images);
 
 		$product_id = $product->save();
-		self::apply_product_attributes($product, $record);
+		self::apply_product_attributes($product, $record, $sync_images);
 		$product->save();
 
 		self::apply_taxonomies($product_id, isset($record['taxonomies']) ? $record['taxonomies'] : array());
@@ -670,12 +683,12 @@ class NLK_Woo_Product_Site_Sync
 		}
 	}
 
-	protected static function apply_product_attributes(WC_Product $product, $record)
+	protected static function apply_product_attributes(WC_Product $product, $record, $sync_images = true)
 	{
 		$attributes = array();
 
 		foreach ((array) ($record['attributes'] ?? array()) as $attr_record) {
-			$attribute = self::build_product_attribute($attr_record, $product->get_id());
+			$attribute = self::build_product_attribute($attr_record, $product->get_id(), $sync_images);
 			if ($attribute) {
 				$attributes[] = $attribute;
 			}
@@ -688,7 +701,7 @@ class NLK_Woo_Product_Site_Sync
 		}
 	}
 
-	protected static function build_product_attribute($attr_record, $product_id)
+	protected static function build_product_attribute($attr_record, $product_id, $sync_images = true)
 	{
 		$name = isset($attr_record['name']) ? (string) $attr_record['name'] : '';
 		if ('' === $name) {
@@ -703,7 +716,9 @@ class NLK_Woo_Product_Site_Sync
 				$term_id = self::ensure_term_from_record($name, $option);
 				if ($term_id) {
 					$options[] = $term_id;
-					self::sync_attribute_term_image($term_id, $option);
+					if ($sync_images) {
+						self::sync_attribute_term_image($term_id, $option);
+					}
 				}
 			}
 
