@@ -155,8 +155,7 @@
     background: rgba(103, 103, 103, 0.10);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px); 
-  -webkit-mask-image: linear-gradient(to top, black 0%, black 15%, transparent 55%);
-  mask-image: linear-gradient(to top, black 0%, black 15%, transparent 55%);
+
   border-radius: 6px;
 border: 0.3px solid #FFF;
 }

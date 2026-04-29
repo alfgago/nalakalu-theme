@@ -123,11 +123,23 @@ if ( $coleccion_term instanceof WP_Term ) {
       $plink = get_permalink( $pid );
       $pname = get_the_title( $pid );
 
-      // Imagen
-      $thumb = get_the_post_thumbnail_url( $pid, 'woocommerce_thumbnail' );
-      if ( ! $thumb && function_exists( 'wc_placeholder_img_src' ) ) {
-        $thumb = wc_placeholder_img_src( 'woocommerce_thumbnail' );
-      }
+     // Imagen
+$thumb_id   = get_post_thumbnail_id( $pid );
+$thumb_html = '';
+
+if ( $thumb_id ) {
+  $thumb_html = wp_get_attachment_image( $thumb_id, 'medium_large', false, [
+    'class'    => 'nl-coleccion-products__img',
+    'alt'      => esc_attr( $pname ),
+    'loading'  => 'lazy',
+    'decoding' => 'async',
+    'sizes'    => '(max-width: 480px) 85vw, (max-width: 768px) 45vw, (max-width: 1200px) 33vw, 25vw',
+  ] );
+}
+
+if ( ! $thumb_html && function_exists( 'wc_placeholder_img_src' ) ) {
+  $thumb_html = '<img class="nl-coleccion-products__img" src="' . esc_url( wc_placeholder_img_src( 'medium_large' ) ) . '" alt="' . esc_attr( $pname ) . '" loading="lazy" decoding="async">';
+}
 
       // Precio
       $price_html = '';
@@ -159,14 +171,14 @@ if ( $coleccion_term instanceof WP_Term ) {
         }
       }
 
-      $nlc_products[] = [
-        'id'         => $pid,
-        'link'       => $plink,
-        'name'       => $pname,
-        'thumb'      => $thumb,
-        'price_html' => $price_html,
-        'cat_slugs'  => $cat_slugs,
-      ];
+$nlc_products[] = [
+  'id'         => $pid,
+  'link'       => $plink,
+  'name'       => $pname,
+  'thumb_html' => $thumb_html,
+  'price_html' => $price_html,
+  'cat_slugs'  => $cat_slugs,
+];
     }
     wp_reset_postdata();
   }
@@ -247,14 +259,8 @@ if ( $coleccion_term instanceof WP_Term ) {
                 class="nl-coleccion-products__card"
                 data-cats="<?php echo esc_attr( $data_cats ); ?>">
                 <div class="nl-coleccion-products__image">
-                  <?php if ( $p['thumb'] ) : ?>
-                    <img
-                      src="<?php echo esc_url( $p['thumb'] ); ?>"
-                      alt="<?php echo esc_attr( $p['name'] ); ?>"
-                      loading="lazy"
-                      decoding="async">
-                  <?php endif; ?>
-                </div>
+  <?php echo $p['thumb_html']; ?>
+</div>
                 <div class="nl-coleccion-products__info">
                   <div class="nl-coleccion-products__details">
                     <div class="nl-coleccion-products__name">
@@ -891,7 +897,7 @@ if ( function_exists('get_field') ) {
             for ($i = 1; $i <= 6; $i++) {
                 $key = "imagen{$i}_lanzamiento";
                 if ( ! empty($lanz[$key]) ) {
-                    $url = tax_lanz_img_url($lanz[$key], 'large') ?: tax_lanz_img_url($lanz[$key], 'full');
+                    $url = tax_lanz_img_url($lanz[$key], 'full') ?: tax_lanz_img_url($lanz[$key], 'full');
                     if ( $url ) {
                         $images[] = $url;
                     }

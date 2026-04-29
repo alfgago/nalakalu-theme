@@ -99,10 +99,22 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
       $pid    = get_the_ID();
       $plink  = get_permalink($pid);
       $pname  = get_the_title($pid);
-      $thumb  = get_the_post_thumbnail_url($pid, 'woocommerce_thumbnail');
-      if (!$thumb) {
-        $thumb = function_exists('wc_placeholder_img_src') ? wc_placeholder_img_src() : '';
-      }
+     $thumb_id = get_post_thumbnail_id($pid);
+$thumb_html = '';
+
+if ($thumb_id) {
+  $thumb_html = wp_get_attachment_image($thumb_id, 'medium_large', false, [
+    'class'    => 'product-card-img',
+    'alt'      => esc_attr($pname),
+    'loading'  => 'lazy',
+    'decoding' => 'async',
+    'sizes'    => '(max-width: 480px) 85vw, (max-width: 768px) 45vw, (max-width: 1200px) 33vw, 25vw',
+  ]);
+}
+
+if (!$thumb_html && function_exists('wc_placeholder_img_src')) {
+  $thumb_html = '<img class="product-card-img" src="' . esc_url(wc_placeholder_img_src('medium_large')) . '" alt="' . esc_attr($pname) . '" loading="lazy" decoding="async">';
+}
       $price_html = '';
       if (function_exists('wc_get_product')) {
         $product = wc_get_product($pid);
@@ -110,9 +122,9 @@ $nl_render_products_track = function($term_id, $taxonomy, $track_id, $is_active 
       }
 
       echo '<a class="product-card" href="'.esc_url($plink).'">';
-        echo '<div class="product-image">';
-          if ($thumb) echo '<img src="'.esc_url($thumb).'" alt="'.esc_attr($pname).'" loading="lazy" decoding="async">';
-        echo '</div>';
+       echo '<div class="product-image">';
+  echo $thumb_html;
+echo '</div>';
         echo '<div class="product-info">';
           echo   '<div class="product-name"><div class="font-button">'.esc_html($pname).'</div></div>';
           echo   '<div class="font-overline">'.$price_html.'</div>';

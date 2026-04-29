@@ -131,56 +131,170 @@ if ( ! function_exists('nl_get_category_pair') ) {
 
 if (!function_exists('nl_get_collection_name')) {
   function nl_get_collection_name($product) {
-    $post_id   = $product->get_id();
-    $tax_slug  = 'showroom';
-    $name      = '';
+    if (!$product) return 'Showroom';
 
-    // 1) Taxonomía
-    if (taxonomy_exists($tax_slug)) {
-      if (function_exists('wc_get_product_terms')) {
-        $names = wc_get_product_terms($post_id, $tax_slug, ['fields' => 'names']);
-      } else {
-        $terms = get_the_terms($post_id, $tax_slug);
-        $names = ($terms && !is_wp_error($terms)) ? wp_list_pluck($terms, 'name') : [];
-      }
-      if (!empty($names)) $name = implode(', ', array_map('trim', $names));
-    }
+    $post_id = $product->get_id();
+    $names   = [];
 
-    // 2) Atributo
-    if (!$name) {
-      foreach (['pa_showroom', 'showroom'] as $key) {
-        $raw = $product->get_attribute($key);
-        if (is_string($raw) && trim($raw) !== '') {
-          $parts = array_map('trim', explode(',', $raw));
-          if (!empty($parts[0])) { $name = $parts[0]; break; }
+    /*
+     * 1) Taxonomía real asignada al producto
+     * Esto funciona si ACF registró la taxonomy "showroom"
+     * y el producto tiene términos asignados.
+     */
+    foreach (['showroom', 'pa_showroom'] as $tax_slug) {
+      if (!taxonomy_exists($tax_slug)) continue;
+
+      $terms = get_the_terms($post_id, $tax_slug);
+
+      if ($terms && !is_wp_error($terms)) {
+        foreach ($terms as $term) {
+          if (!empty($term->name)) {
+            $names[] = $term->name;
+          }
         }
       }
-      if (!$name) {
-        foreach ((array) $product->get_attributes() as $attr) {
-          if (method_exists($attr, 'get_name') && $attr->get_name() === 'pa_showroom') {
-            $raw = $product->get_attribute('pa_showroomn');
-            if ($raw) { $parts = array_map('trim', explode(',', $raw)); if (!empty($parts[0])) { $name = $parts[0]; break; } }
+
+      if (!empty($names)) break;
+    }
+
+    /*
+     * 2) ACF field fallback
+     * Sirve si "showroom" está cargado como campo ACF tipo taxonomy
+     * pero no está guardando términos reales en el producto.
+     */
+    if (empty($names) && function_exists('get_field')) {
+      $acf_val = get_field('showroom', $post_id);
+
+      if (!$acf_val) {
+        $acf_val = get_field('showrooms', $post_id);
+      }
+
+      $push_acf_term = function($item) use (&$names) {
+        if (!$item) return;
+
+        // ACF taxonomy return format: Term Object
+        if (is_object($item) && !empty($item->name)) {
+          $names[] = $item->name;
+          return;
+        }
+
+        // ACF taxonomy return format: array
+        if (is_array($item)) {
+          if (!empty($item['name'])) {
+            $names[] = $item['name'];
+            return;
+          }
+
+          if (!empty($item['term_id'])) {
+            $term = get_term((int) $item['term_id']);
+            if ($term && !is_wp_error($term) && !empty($term->name)) {
+              $names[] = $term->name;
+            }
+            return;
+          }
+        }
+
+        // ACF taxonomy return format: term ID
+        if (is_numeric($item)) {
+          $term = get_term((int) $item);
+          if ($term && !is_wp_error($term) && !empty($term->name)) {
+            $names[] = $term->name;
+          }
+          return;
+        }
+
+        // ACF text/string fallback
+        if (is_string($item) && trim($item) !== '') {
+          $maybe_term = null;
+
+          if (taxonomy_exists('showroom')) {
+            $maybe_term = get_term_by('slug', sanitize_title($item), 'showroom');
+            if (!$maybe_term) {
+              $maybe_term = get_term_by('name', trim($item), 'showroom');
+            }
+          }
+
+          if ($maybe_term && !is_wp_error($maybe_term) && !empty($maybe_term->name)) {
+            $names[] = $maybe_term->name;
+          } else {
+            $names[] = trim($item);
+          }
+        }
+      };
+
+      if (is_array($acf_val)) {
+        foreach ($acf_val as $item) {
+          $push_acf_term($item);
+        }
+      } else {
+        $push_acf_term($acf_val);
+      }
+    }
+
+    /*
+     * 3) Woo attribute fallback
+     */
+    if (empty($names)) {
+      foreach (['pa_showroom', 'showroom'] as $attr_key) {
+        $raw = $product->get_attribute($attr_key);
+
+        if (is_string($raw) && trim($raw) !== '') {
+          $parts = array_map('trim', explode(',', $raw));
+          if (!empty($parts[0])) {
+            $names[] = $parts[0];
+            break;
           }
         }
       }
     }
 
-    // 3) ACF
-    if (!$name && function_exists('get_field')) {
-      $acf_val = get_field('showroom', $post_id) ?: get_field('showrooms', $post_id);
-      $names = [];
-      $push = static function($item) use (&$names){
-        if (is_object($item) && !empty($item->name)) $names[] = $item->name;
-        elseif (is_array($item) && !empty($item['name'])) $names[] = $item['name'];
-        elseif (is_numeric($item)) { $t = get_term((int)$item); if ($t && !is_wp_error($t) && !empty($t->name)) $names[] = $t->name; }
-        elseif (is_string($item) && $item !== '') $names[] = $item;
-      };
-      if (is_array($acf_val)) { foreach ($acf_val as $it) { $push($it); } }
-      elseif ($acf_val) { $push($acf_val); }
-      if (!empty($names)) $name = implode(', ', array_map('trim', $names));
+    $names = array_values(array_unique(array_filter(array_map('trim', $names))));
+
+    return !empty($names) ? implode(', ', $names) : 'Showroom';
+  }
+}
+
+if (!function_exists('nl_get_product_showroom_badge_info')) {
+  function nl_get_product_showroom_badge_info($product) {
+    $out = [
+      'name' => '',
+      'url'  => '',
+    ];
+
+    if (!$product || !is_a($product, 'WC_Product')) {
+      return $out;
     }
 
-    return $name ?: 'Showroom';
+    $post_id = $product->get_id();
+
+    if (!taxonomy_exists('showroom')) {
+      return $out;
+    }
+
+    $terms = wp_get_object_terms($post_id, 'showroom', [
+      'fields' => 'all',
+    ]);
+
+    if (is_wp_error($terms) || empty($terms)) {
+      return $out;
+    }
+
+    $term = array_values($terms)[0];
+
+    if (empty($term->name)) {
+      return $out;
+    }
+
+    $link = get_term_link($term, 'showroom');
+
+    if (is_wp_error($link) || empty($link)) {
+      return $out;
+    }
+
+    $out['name'] = $term->name;
+    $out['url']  = $link;
+
+    return $out;
   }
 }
 
@@ -252,11 +366,13 @@ if (!function_exists('nl_get_product_image_ids')) {
       }
     }
 
-    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
-    if ($banner_id) {
-      $ids = array_values(array_diff($ids, [(int)$banner_id]));
-    }
-    return array_slice($ids, 0, 5);
+   $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+if ($banner_id && !in_array((int) $banner_id, $ids, true)) {
+  array_unshift($ids, (int) $banner_id);
+}
+
+return array_slice($ids, 0, 6);
   }
 }
 
@@ -338,8 +454,9 @@ $crumbs[] = ['label'=>$title, 'url'=>null, 'pos'=>$pos++];
 /* =========================================================
  *  SHOWROOM (galería principal + badge)
  * ======================================================= */
-$collection_name = nl_get_collection_name($product);
-$badge_text      = 'Disponible ahora en ' . $collection_name;
+$showroom_badge = nl_get_product_showroom_badge_info($product);
+$has_showroom_badge = !empty($showroom_badge['name']) && !empty($showroom_badge['url']);
+$badge_text = $has_showroom_badge ? 'Disponible ahora en ' . $showroom_badge['name'] : '';
 
 $image_ids       = nl_get_product_image_ids($product);
 $banner_id       = nl_get_product_banner_image_id($product);
@@ -368,24 +485,85 @@ $use_placeholder = ! $showroom_id && function_exists('wc_placeholder_img_src');
 
  
 
-  <div class="nl-showroom-badge">
+<?php if ($has_showroom_badge): ?>
+  <a
+    class="nl-showroom-badge"
+    href="<?php echo esc_url($showroom_badge['url']); ?>"
+    aria-label="<?php echo esc_attr($badge_text); ?>"
+  >
     <div class="nl-badge-circle">
       <div class="nl-gradient-border"></div>
       <div class="nl-inner-circle"></div>
-      <svg class="nl-badge-svg" viewBox="0 0 200 200" aria-label="<?php echo esc_attr($badge_text); ?>">
-        <defs><path id="<?php echo esc_attr($circle_id); ?>" d="M100,100 m-86,0 a86,86 0 1,1 172,0 a86,86 0 1,1 -172,0"></path></defs>
+
+      <svg class="nl-badge-svg" viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <path id="<?php echo esc_attr($circle_id); ?>" d="M100,100 m-86,0 a86,86 0 1,1 172,0 a86,86 0 1,1 -172,0"></path>
+        </defs>
+
         <text class="nl-badge-text-svg">
-          <textPath href="#<?php echo esc_attr($circle_id); ?>" startOffset="50%" text-anchor="middle"><?php echo esc_html($badge_text); ?></textPath>
+          <textPath href="#<?php echo esc_attr($circle_id); ?>" startOffset="50%" text-anchor="middle">
+            <?php echo esc_html($badge_text); ?>
+          </textPath>
         </text>
       </svg>
+
       <div class="nl-badge-center" aria-hidden="true">
         <span class="nl-badge-center-ring"></span>
         <span class="nl-badge-center-disc"></span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="13" viewBox="0 0 12 13" class="arrow-icon-product"><path d="M11.1129 9.92419C11.1156 9.9939 11.1047 10.0638 11.0806 10.1298C11.0565 10.1959 11.0198 10.2568 10.9725 10.3091C10.8771 10.4148 10.7445 10.4791 10.604 10.4877C10.4635 10.4964 10.3266 10.4488 10.2233 10.3554C10.12 10.262 10.0589 10.1304 10.0534 9.9896L9.73424 1.86317L0.926969 11.9948C0.833551 12.1022 0.702211 12.169 0.561845 12.1804C0.421479 12.1918 0.283583 12.1469 0.178494 12.0555C0.0734036 11.9642 0.00972796 11.8339 0.00147502 11.6933C-0.00677792 11.5527 0.0410676 11.4133 0.134486 11.3059L8.94081 1.17536L0.850579 1.9907C0.781167 1.99768 0.711364 1.99091 0.645157 1.97077C0.578951 1.95064 0.517635 1.91752 0.464714 1.87332C0.411793 1.82913 0.368301 1.77471 0.336722 1.71318C0.305144 1.65165 0.286095 1.58422 0.280666 1.51472C0.275237 1.44523 0.283533 1.37505 0.30508 1.30817C0.326628 1.24129 0.361004 1.17904 0.406247 1.12496C0.451491 1.07089 0.506715 1.02604 0.568767 0.992996C0.630818 0.959948 0.698482 0.939344 0.767895 0.932357L9.98707 0.00379129C10.0819 -0.00573188 10.1772 0.0039978 10.2674 0.0323982C10.3575 0.0607983 10.4406 0.107285 10.5117 0.169075C10.5828 0.230865 10.6404 0.306687 10.681 0.392002C10.7217 0.477316 10.7446 0.570369 10.7484 0.66559L11.1129 9.92419Z" fill="#3D332B"/></svg>
+
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="13" viewBox="0 0 12 13" class="arrow-icon-product">
+          <path d="M11.1129 9.92419C11.1156 9.9939 11.1047 10.0638 11.0806 10.1298C11.0565 10.1959 11.0198 10.2568 10.9725 10.3091C10.8771 10.4148 10.7445 10.4791 10.604 10.4877C10.4635 10.4964 10.3266 10.4488 10.2233 10.3554C10.12 10.262 10.0589 10.1304 10.0534 9.9896L9.73424 1.86317L0.926969 11.9948C0.833551 12.1022 0.702211 12.169 0.561845 12.1804C0.421479 12.1918 0.283583 12.1469 0.178494 12.0555C0.0734036 11.9642 0.00972796 11.8339 0.00147502 11.6933C-0.00677792 11.5527 0.0410676 11.4133 0.134486 11.3059L8.94081 1.17536L0.850579 1.9907C0.781167 1.99768 0.711364 1.99091 0.645157 1.97077C0.578951 1.95064 0.517635 1.91752 0.464714 1.87332C0.411793 1.82913 0.368301 1.77471 0.336722 1.71318C0.305144 1.65165 0.286095 1.58422 0.280666 1.51472C0.275237 1.44523 0.283533 1.37505 0.30508 1.30817C0.326628 1.24129 0.361004 1.17904 0.406247 1.12496C0.451491 1.07089 0.506715 1.02604 0.568767 0.992996C0.630818 0.959948 0.698482 0.939344 0.767895 0.932357L9.98707 0.00379129C10.0819 -0.00573188 10.1772 0.0039978 10.2674 0.0323982C10.3575 0.0607983 10.4406 0.107285 10.5117 0.169075C10.5828 0.230865 10.6404 0.306687 10.681 0.392002C10.7217 0.477316 10.7446 0.570369 10.7484 0.66559L11.1129 9.92419Z" fill="#3D332B"/>
+        </svg>
       </div>
     </div>
-  </div>
+  </a>
+<?php endif; ?>
 </section>
+
+<script>
+(function(){
+  var badges = document.querySelectorAll('.nl-showroom-section .nl-showroom-badge');
+
+  if (!badges.length) return;
+
+  var ticking = false;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function updateBadgeRotation() {
+    var windowH = window.innerHeight || document.documentElement.clientHeight;
+
+    badges.forEach(function(badge){
+      var section = badge.closest('.nl-showroom-section');
+      if (!section) return;
+
+      var rect = section.getBoundingClientRect();
+
+      var progress = (windowH - rect.top) / (windowH + rect.height);
+      progress = clamp(progress, 0, 1);
+
+      var rotation = progress * 360;
+
+      badge.style.setProperty('--nl-badge-scroll-rotate', rotation + 'deg');
+    });
+
+    ticking = false;
+  }
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(updateBadgeRotation);
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+
+  updateBadgeRotation();
+})();
+</script>
 
 <script>
 (function(){
@@ -491,10 +669,15 @@ $use_placeholder = ! $showroom_id && function_exists('wc_placeholder_img_src');
 /* =========================================================
  *  INFO PRODUCTO (título, desc, precio, add to cart + galería thumbs)
  * ======================================================= */
-$image_ids  = nl_get_product_image_ids($product);
-$gallery_image_ids = array_values(array_diff($image_ids, $showroom_id ? [$showroom_id] : []));
-$main_id    = $gallery_image_ids[0] ?? 0;
-$thumb_ids  = $gallery_image_ids;
+$image_ids = nl_get_product_image_ids($product);
+
+if ($showroom_id && !in_array((int) $showroom_id, $image_ids, true)) {
+  array_unshift($image_ids, (int) $showroom_id);
+}
+
+$gallery_image_ids = array_values(array_unique(array_filter(array_map('intval', $image_ids))));
+$main_id   = $gallery_image_ids[0] ?? 0;
+$thumb_ids = $gallery_image_ids;
 $main_full  = $main_id ? wp_get_attachment_image_url($main_id, 'full') : '';
 
 $main_html  = $main_id
@@ -901,9 +1084,15 @@ if ( $product->is_type('variable') ) {
       <?php if (!empty($thumb_ids)): ?>
         <div class="info-product-thumbnails">
           <?php foreach ($thumb_ids as $i => $att_id):
-            $large = wp_get_attachment_image_url($att_id, 'large');
+            $large = wp_get_attachment_image_url($att_id, 'full');
             $full  = wp_get_attachment_image_url($att_id, 'full');
-            $thumb = wp_get_attachment_image_url($att_id, 'woocommerce_gallery_thumbnail');
+            $thumb = wp_get_attachment_image_url($att_id, 'medium_large');
+if (!$thumb) {
+  $thumb = wp_get_attachment_image_url($att_id, 'large');
+}
+if (!$thumb) {
+  $thumb = wp_get_attachment_image_url($att_id, 'full');
+}
             $alt   = trim(get_post_meta($att_id, '_wp_attachment_image_alt', true)) ?: $title . ' vista ' . ($i+1);
           ?>
           <button type="button" class="info-product-thumbnail<?php echo $i===0 ? ' active' : ''; ?>" data-large="<?php echo esc_url($large); ?>" data-full="<?php echo esc_url($full); ?>" data-alt="<?php echo esc_attr($alt); ?>" data-index="<?php echo esc_attr($i+1); ?>" aria-label="<?php echo esc_attr('Ver ' . $alt); ?>" aria-current="<?php echo $i===0 ? 'true' : 'false'; ?>">
@@ -1844,266 +2033,3 @@ if ( function_exists('get_field') && ($detras_de_cards = get_field('detras_de', 
 
 <?php endif; ?>
 
-
-<?php
-/* =========================================================
- *  RECOMENDACIONES (featured products carousel)
- * ======================================================= */
-if ( ! function_exists('wc_get_featured_product_ids') ) return;
-
-$featured_ids = array_filter( (array) wc_get_featured_product_ids(), 'is_numeric' );
-$featured_ids = array_diff( $featured_ids, [ get_the_ID() ] );
-
-if ( empty($featured_ids) ) {
-  $fallback = new WP_Query([
-    'post_type'=>'product','post_status'=>'publish',
-    'meta_query'=>[[ 'key' => '_featured', 'value' => 'yes' ]],
-    'posts_per_page'=>12,'fields'=>'ids',
-  ]);
-  $featured_ids = $fallback->posts ?: [];
-  wp_reset_postdata();
-}
-if (!empty($featured_ids)):
-  $section_id = 'recs-' . uniqid();
-?>
-<section id="<?php echo esc_attr($section_id); ?>" class="pcarousel">
-  <div class="container">
-    <div class="title-row">
-      <h1 class="detrasde-title">Recomendaciones</h1>
-      <div class="nav-buttons">
-        <button class="carousel-btn prev-btn" aria-label="Anterior">←</button>
-        <button class="carousel-btn next-btn" aria-label="Siguiente">→</button>
-      </div>
-    </div>
-
-    <div class="carousel-section" data-items-per-view="">
-      <div class="products-wrapper">
-        <div class="products-track is-active" data-track="<?php echo esc_attr($section_id); ?>-track">
-          <div class="products-grid" id="<?php echo esc_attr($section_id); ?>-track">
-            <?php
-            $q = new WP_Query([
-              'post_type'=>'product','post_status'=>'publish',
-              'post__in'=>$featured_ids,'orderby'=>'post__in','posts_per_page'=>12,
-            ]);
-            if ( $q->have_posts() ) :
-              while ( $q->have_posts() ) : $q->the_post();
-                $pid    = get_the_ID();
-                $plink  = get_permalink($pid);
-                $pname  = get_the_title($pid);
-                $thumb  = get_the_post_thumbnail_url($pid, 'woocommerce_thumbnail');
-                if (!$thumb && function_exists('wc_placeholder_img_src')) $thumb = wc_placeholder_img_src();
-                $price_html = '';
-                if ( function_exists('wc_get_product') ) { $p = wc_get_product($pid); if ($p) $price_html = $p->get_price_html(); }
-                ?>
-                <a class="product-card" href="<?php echo esc_url($plink); ?>">
-                  <div class="product-image">
-                    <?php if ($thumb): ?><img src="<?php echo esc_url($thumb); ?>" alt="<?php echo esc_attr($pname); ?>" loading="lazy" decoding="async"><?php endif; ?>
-                  </div>
-                  <div class="product-info">
-                    <div class="product-name"><div class="font-button"><?php echo esc_html($pname); ?></div></div>
-                    <div class="font-overline"><?php echo wp_kses_post($price_html); ?></div>
-                  </div>
-                </a>
-              <?php endwhile; wp_reset_postdata(); endif; ?>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
- <script>
-(function(){
-  var root = document.getElementById('<?php echo esc_js($section_id); ?>');
-  if(!root) return;
-
-  var prevBtn  = root.querySelector('.prev-btn');
-  var nextBtn  = root.querySelector('.next-btn');
-  var wrapper  = root.querySelector('.products-wrapper');
-  var grid     = root.querySelector('.products-grid');
-  if(!wrapper || !grid) return;
-
-  var cards = Array.from(grid.querySelectorAll('.product-card'));
-  if(cards.length < 2) return;
-
-  var mqMobile = window.matchMedia('(max-width: 768px)');
-  var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // =========================
-  // DESKTOP (tu lógica original)
-  // =========================
-  var state = { index: 0, perView: 4 };
-
-  function updatePerViewDesktop(){
-    var w = window.innerWidth;
-    if (w <= 1200) state.perView = 3;
-    else state.perView = 4;
-  }
-
-  function counts(){
-    var total = cards.length;
-    var maxIndex = Math.max(0, total - state.perView);
-    return { total: total, maxIndex: maxIndex };
-  }
-
-  function clamp(i){
-    var c = counts();
-    return Math.max(0, Math.min(c.maxIndex, i));
-  }
-
-  function updateButtonsDesktop(){
-    var c = counts();
-    if (prevBtn) prevBtn.disabled = (state.index === 0);
-    if (nextBtn) nextBtn.disabled = (state.index >= c.maxIndex);
-  }
-
-  function updateCarouselDesktop(animate){
-    if (!cards.length) return;
-    var card = cards[0];
-    var style = window.getComputedStyle(grid);
-    var gapPx = parseFloat(style.columnGap || style.gap || 0);
-    var cardW = card.getBoundingClientRect().width;
-    var x = -(state.index * (cardW + gapPx));
-    grid.style.transition = animate ? 'transform .5s ease' : 'none';
-    grid.style.transform  = 'translateX(' + x + 'px)';
-    updateButtonsDesktop();
-  }
-
-  function goDesktop(delta){
-    state.index = clamp(state.index + delta);
-    updateCarouselDesktop(true);
-  }
-
-  if (prevBtn) prevBtn.addEventListener('click', function(e){
-    e.preventDefault();
-    if (mqMobile.matches) return;
-    goDesktop(-state.perView);
-  });
-
-  if (nextBtn) nextBtn.addEventListener('click', function(e){
-    e.preventDefault();
-    if (mqMobile.matches) return;
-    goDesktop(+state.perView);
-  });
-
-  // =========================
-  // MOBILE (scroll-snap + dots)
-  // =========================
-  var dotsWrap = null;
-  var dots = [];
-  var raf = null;
-
-  function ensureDots(){
-    if (dotsWrap) return;
-
-    dotsWrap = document.createElement('div');
-    dotsWrap.className = 'recs-dots';
-    dotsWrap.setAttribute('role','tablist');
-    dotsWrap.setAttribute('aria-label','Navegación del carrusel');
-
-    // lo ponemos debajo del wrapper
-    wrapper.parentNode.insertBefore(dotsWrap, wrapper.nextSibling);
-
-    dots = cards.map(function(card, i){
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'recs-dot' + (i===0 ? ' active' : '');
-      b.setAttribute('aria-label', 'Ir al producto ' + (i+1));
-      b.setAttribute('aria-current', i===0 ? 'true' : 'false');
-      b.addEventListener('click', function(){
-        wrapper.scrollTo({
-          left: card.offsetLeft,
-          behavior: prefersReduced ? 'auto' : 'smooth'
-        });
-      });
-      dotsWrap.appendChild(b);
-      return b;
-    });
-  }
-
-  function setActiveDot(idx){
-    dots.forEach(function(d, i){
-      var active = i === idx;
-      d.classList.toggle('active', active);
-      d.setAttribute('aria-current', active ? 'true' : 'false');
-    });
-  }
-
-  function onScrollMobile(){
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(function(){
-      var center = wrapper.scrollLeft + wrapper.clientWidth / 2;
-      var best = 0, bestDist = Infinity;
-
-      for (var i=0;i<cards.length;i++){
-        var c = cards[i];
-        var cCenter = c.offsetLeft + c.clientWidth / 2;
-        var dist = Math.abs(center - cCenter);
-        if (dist < bestDist){ bestDist = dist; best = i; }
-      }
-      setActiveDot(best);
-    });
-  }
-
-  function enterMobile(){
-    // aseguramos que el transform de desktop no moleste
-    grid.style.transform = 'none';
-    grid.style.transition = 'none';
-
-    ensureDots();
-    wrapper.addEventListener('scroll', onScrollMobile, { passive:true });
-    onScrollMobile();
-  }
-
-  function exitMobile(){
-    wrapper.removeEventListener('scroll', onScrollMobile);
-    if (dotsWrap){
-      dotsWrap.remove();
-      dotsWrap = null;
-      dots = [];
-    }
-  }
-
-  // =========================
-  // Switch según breakpoint
-  // =========================
-  function apply(){
-    if (mqMobile.matches){
-      enterMobile();
-      // por las dudas, botones no-interactivos
-      if (prevBtn) prevBtn.disabled = true;
-      if (nextBtn) nextBtn.disabled = true;
-    } else {
-      exitMobile();
-      updatePerViewDesktop();
-      state.index = clamp(state.index);
-      updateCarouselDesktop(false);
-    }
-  }
-
-  apply();
-  window.addEventListener('resize', function(){
-    apply();
-  });
-  window.addEventListener('load', function(){
-    apply();
-  });
-})();
-</script>
-
-</section>
-<?php endif; ?>
-
-<?php if (function_exists('nl_render_lookbook_relocated')): ?>
-  <!-- LOOKBOOK full-width reubicado -->
-  <section class="nl-lookbook-fw" aria-labelledby="nl-lookbook-heading">
-    <div class="nl-lookbook-header">
-      <h2 id="detrasde-title" class="detrasde-title">Armoniza con</h2>
-    </div>
-    <div class="nl-lookbook-body">
-      <?php nl_render_lookbook_relocated([
-        'debug'    => false, // true para ver panel
-        'relocate' => true,  // evita duplicado en hook original
-      ]); ?>
-    </div>
-  </section>
-<?php endif; ?>
