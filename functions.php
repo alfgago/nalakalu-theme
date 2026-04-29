@@ -955,7 +955,10 @@ add_action('wp_ajax_nlk_product_search', 'nlk_product_search');
 add_action('wp_ajax_nopriv_nlk_product_search', 'nlk_product_search');
 
 function nlk_product_search() {
-  if (isset($_GET['nonce']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'nlk_product_search')) {
+  if (
+    isset($_GET['nonce']) &&
+    !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'nlk_product_search')
+  ) {
     wp_send_json_error(['message' => 'Invalid nonce'], 403);
   }
 
@@ -975,6 +978,7 @@ function nlk_product_search() {
   ]);
 
   $out = [];
+
   foreach ($q->posts as $p) {
     $product = wc_get_product($p->ID);
     if (!$product) continue;
@@ -983,16 +987,32 @@ function nlk_product_search() {
     if (!$desc) $desc = get_the_excerpt($p->ID);
     $desc = wp_strip_all_tags($desc);
 
-    $img = get_the_post_thumbnail_url($p->ID, 'woocommerce_thumbnail');
-    if (!$img && function_exists('wc_placeholder_img_src')) $img = wc_placeholder_img_src('woocommerce_thumbnail');
+    $thumb_id = get_post_thumbnail_id($p->ID);
+    $img = '';
+
+    if ($thumb_id) {
+      $img = wp_get_attachment_image_url($thumb_id, 'medium_large');
+
+      if (!$img) {
+        $img = wp_get_attachment_image_url($thumb_id, 'large');
+      }
+
+      if (!$img) {
+        $img = wp_get_attachment_image_url($thumb_id, 'full');
+      }
+    }
+
+    if (!$img && function_exists('wc_placeholder_img_src')) {
+      $img = wc_placeholder_img_src('medium_large');
+    }
 
     $out[] = [
-      'id'         => $p->ID,
-      'name'       => get_the_title($p->ID),
-      'description'=> $desc,
-      'price_html' => $product->get_price_html(),
-      'url'        => get_permalink($p->ID),
-      'image'      => $img ?: '',
+      'id'          => $p->ID,
+      'name'        => get_the_title($p->ID),
+      'description' => $desc,
+      'price_html'  => $product->get_price_html(),
+      'url'         => get_permalink($p->ID),
+      'image'       => $img ?: '',
     ];
   }
 
