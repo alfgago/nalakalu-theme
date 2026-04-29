@@ -401,6 +401,30 @@ if (!function_exists('nl_pick_default_variation')) {
   }
 }
 
+if (!function_exists('nl_get_available_variations_with_price_html')) {
+  function nl_get_available_variations_with_price_html( WC_Product_Variable $product ){
+    $available_variations = $product->get_available_variations();
+
+    foreach ($available_variations as &$variation_data) {
+      if (!empty($variation_data['price_html'])) continue;
+
+      $variation_id = !empty($variation_data['variation_id']) ? absint($variation_data['variation_id']) : 0;
+      if (!$variation_id) continue;
+
+      $variation = wc_get_product($variation_id);
+      if (!$variation instanceof WC_Product_Variation) continue;
+
+      $price_html = $variation->get_price_html();
+      if ($price_html) {
+        $variation_data['price_html'] = '<span class="price">' . $price_html . '</span>';
+      }
+    }
+    unset($variation_data);
+
+    return $available_variations;
+  }
+}
+
 if (!function_exists('nl_has_content_wysiwyg')) {
   function nl_has_content_wysiwyg($raw){
     if ($raw === null) return false;
@@ -766,7 +790,7 @@ if ( $product->is_type('variable') ) {
 
     $variation_attributes = $product->get_variation_attributes();
     $default_attributes   = $product->get_default_attributes();
-    $available_variations = $product->get_available_variations();
+    $available_variations = nl_get_available_variations_with_price_html($product);
 
     $text_attrs  = []; // radios texto
     $image_attrs = []; // tabs swatches

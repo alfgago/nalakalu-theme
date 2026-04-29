@@ -670,6 +670,7 @@ class NLK_Woo_CSV_Import
 
 			$prepared_variations = self::prepare_rows_for_import($chunk['headers'], $variations, true, $update_existing, $file['basename']);
 			$variation_results   = self::run_importer_for_rows($chunk['headers'], $prepared_variations['rows'], $update_existing);
+			self::sync_variable_parents_for_variation_rows($variations);
 
 			$stats = self::merge_import_stats($stats, $variation_results['stats']);
 
@@ -1207,6 +1208,7 @@ class NLK_Woo_CSV_Import
 		if (! empty($variations)) {
 			$prepared_variations = self::prepare_rows_for_import($headers, $variations, true, $update_existing, $source_label);
 			$variation_results   = self::run_importer_for_rows($headers, $prepared_variations['rows'], $update_existing);
+			self::sync_variable_parents_for_variation_rows($variations);
 
 			$stats = self::merge_import_stats($stats, $variation_results['stats']);
 			$messages = array_merge($messages, $prepared_variations['messages'], $variation_results['messages']);
@@ -2132,6 +2134,40 @@ class NLK_Woo_CSV_Import
 			'rows'     => $prepared,
 			'messages' => $messages,
 		);
+	}
+
+	protected static function sync_variable_parents_for_variation_rows($variation_rows)
+	{
+		if (! class_exists('WC_Product_Variable')) {
+			return;
+		}
+
+		$parent_ids = array();
+
+		foreach ((array) $variation_rows as $row) {
+			$source_parent = trim((string) self::row_value($row, 'Superior'));
+
+			if ('' === $source_parent) {
+				continue;
+			}
+
+			$parent_id = self::find_local_product_id_by_reference($source_parent);
+
+			if ($parent_id > 0) {
+				$parent_ids[] = absint($parent_id);
+			}
+		}
+
+		foreach (array_values(array_unique(array_filter($parent_ids))) as $parent_id) {
+			$product = wc_get_product($parent_id);
+
+			if (! $product || ! $product->is_type('variable')) {
+				continue;
+			}
+
+			WC_Product_Variable::sync($parent_id);
+			wc_delete_product_transients($parent_id);
+		}
 	}
 
 	protected static function ensure_missing_parents_for_variations($headers, $variations, $file, $update_existing)
