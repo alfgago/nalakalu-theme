@@ -492,7 +492,9 @@ $use_placeholder = ! $showroom_id && function_exists('wc_placeholder_img_src');
  *  INFO PRODUCTO (título, desc, precio, add to cart + galería thumbs)
  * ======================================================= */
 $image_ids  = nl_get_product_image_ids($product);
-$gallery_image_ids = array_values(array_diff($image_ids, $showroom_id ? [$showroom_id] : []));
+// Banner/showroom is hidden via CSS; show every available image in the carousel below.
+// Original behavior (kept for reference): array_diff($image_ids, $showroom_id ? [$showroom_id] : []).
+$gallery_image_ids = $image_ids;
 $main_id    = $gallery_image_ids[0] ?? 0;
 $thumb_ids  = $gallery_image_ids;
 $main_full  = $main_id ? wp_get_attachment_image_url($main_id, 'full') : '';

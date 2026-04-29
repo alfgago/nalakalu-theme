@@ -991,24 +991,37 @@ class NLK_Woo_Product_Site_Sync
 		}
 
 		foreach (array('featured', 'banner', 'detail') as $kind) {
-			if (! empty($matches[$kind][0])) {
-				self::replace_kind_with_match($product_id, $product_name, $kind, $matches[$kind][0], $dry_run, $stats);
+			if (! empty($matches[$kind])) {
+				self::replace_kind_with_match($product_id, $product_name, $kind, $matches[$kind], $dry_run, $stats);
 			}
 		}
 	}
 
 	/**
-	 * Sideloads $new_path for $kind on $product_id, replacing the existing assignment.
+	 * Sideloads $new_paths for $kind on $product_id, replacing the existing assignment.
+	 * For 'featured' and 'banner' kinds only the first path is used (single field).
+	 * For 'detail', all paths become the gallery (in array order).
+	 *
 	 * Old attachments that came from this importer (have IMAGE_SOURCE_META_KEY) and are
 	 * not referenced by any other post are deleted. Manually-uploaded old attachments are
 	 * left in the media library, just unlinked from this product.
 	 */
-	protected static function replace_kind_with_match($product_id, $product_name, $kind, $new_path, $dry_run, &$stats)
+	protected static function replace_kind_with_match($product_id, $product_name, $kind, $new_paths, $dry_run, &$stats)
 	{
+		$new_paths = array_values(array_filter((array) $new_paths));
+		if (empty($new_paths)) {
+			return;
+		}
+
+		// featured/banner are single-valued fields.
+		if ('featured' === $kind || 'banner' === $kind) {
+			$new_paths = array(reset($new_paths));
+		}
+
 		$old_ids = self::current_attachment_ids_for_kind($product_id, $kind);
 
 		if ($dry_run) {
-			$stats['images_' . $kind]++;
+			$stats['images_' . $kind] += count($new_paths);
 			foreach ($old_ids as $old_id) {
 				$stats['images_replaced']++;
 				if (self::should_delete_old_attachment($old_id, $product_id)) {
@@ -1018,22 +1031,31 @@ class NLK_Woo_Product_Site_Sync
 			return;
 		}
 
-		$title  = $product_name . self::kind_title_suffix($kind);
-		$new_id = self::import_attachment($new_path, $product_id, $title);
-		if (! $new_id) {
+		$title   = $product_name . self::kind_title_suffix($kind);
+		$new_ids = array();
+		foreach ($new_paths as $path) {
+			$id = self::import_attachment($path, $product_id, $title);
+			if ($id) {
+				$new_ids[] = (int) $id;
+				$stats['images_' . $kind]++;
+			}
+		}
+
+		$new_ids = array_values(array_unique($new_ids));
+		if (empty($new_ids)) {
 			return;
 		}
 
-		self::set_kind_attachment($product_id, $kind, $new_id);
-		$stats['images_' . $kind]++;
+		self::set_kind_attachment($product_id, $kind, $new_ids);
 
 		foreach ($old_ids as $old_id) {
-			if (! $old_id || (int) $old_id === (int) $new_id) {
+			$old_id = (int) $old_id;
+			if (! $old_id || in_array($old_id, $new_ids, true)) {
 				continue;
 			}
 			$stats['images_replaced']++;
 			if (self::should_delete_old_attachment($old_id, $product_id)) {
-				wp_delete_attachment((int) $old_id, true);
+				wp_delete_attachment($old_id, true);
 				$stats['images_deleted']++;
 			}
 		}
@@ -1065,22 +1087,26 @@ class NLK_Woo_Product_Site_Sync
 		return array();
 	}
 
-	protected static function set_kind_attachment($product_id, $kind, $new_id)
+	protected static function set_kind_attachment($product_id, $kind, $new_ids)
 	{
-		$new_id = (int) $new_id;
+		$new_ids = array_values(array_unique(array_filter(array_map('intval', (array) $new_ids))));
+		if (empty($new_ids)) {
+			return;
+		}
+		$first = (int) $new_ids[0];
 
 		if ('featured' === $kind) {
-			set_post_thumbnail($product_id, $new_id);
+			set_post_thumbnail($product_id, $first);
 			return;
 		}
 
 		if ('banner' === $kind) {
-			self::update_banner_image($product_id, $new_id);
+			self::update_banner_image($product_id, $first);
 			return;
 		}
 
 		if ('detail' === $kind) {
-			update_post_meta($product_id, '_product_image_gallery', (string) $new_id);
+			update_post_meta($product_id, '_product_image_gallery', implode(',', $new_ids));
 		}
 	}
 
@@ -1204,7 +1230,10 @@ class NLK_Woo_Product_Site_Sync
 
 			if (preg_match('/^(.+)_([123])$/', $stem, $m)) {
 				$stem = $m[1];
-				$kind = ('1' === $m[2]) ? 'featured' : (('2' === $m[2]) ? 'detail' : 'banner');
+				// _1 -> featured (post thumbnail). _2 and _3 both go to gallery (carousel).
+				// The 'banner' kind is preserved in the rest of the code, just no longer
+				// produced by this parser while the banner template is hidden via CSS.
+				$kind = ('1' === $m[2]) ? 'featured' : 'detail';
 			} elseif (preg_match('/_(AMBIENTE|DETALLE)(?:_\d+)?$/i', $stem)) {
 				// Legacy convention - no longer recognized.
 				$kind = null;

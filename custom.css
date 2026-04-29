@@ -1538,4 +1538,9 @@ border:none !important;
   width:100%;
 }
 
+/* Banner/showroom hidden by client request — keep markup intact in case it returns. */
+.nl-showroom-section {
+    display: none;
+}
+
 }
