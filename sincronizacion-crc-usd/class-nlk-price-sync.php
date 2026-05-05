@@ -1,6 +1,6 @@
 <?php
 /**
- * Lógica de conversión CRC → USD y actualización masiva de precios.
+ * Lógica de conversión CRC x USD y actualización masiva de precios.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

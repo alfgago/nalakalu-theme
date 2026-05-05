@@ -1,6 +1,6 @@
 <?php
 /**
- * Sincronización CRC → USD para WooCommerce
+ * Sincronización CRC x USD para WooCommerce
  *
  * Permite definir precios base en colones (CRC) y sincronizar
  * automáticamente el precio de WooCommerce en dólares (USD)

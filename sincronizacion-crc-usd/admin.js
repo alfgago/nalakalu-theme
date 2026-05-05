@@ -1,5 +1,5 @@
 /**
- * Admin JS para Sincronización CRC → USD
+ * Admin JS para Sincronización CRC x USD
  */
 (function ($) {
   'use strict';

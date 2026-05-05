@@ -1,6 +1,6 @@
 <?php
 /**
- * Página de configuración administrativa para sincronización CRC → USD.
+ * Página de configuración administrativa para sincronización CRC x USD.
  *
  * Se agrega como submenú de WooCommerce.
  * Permite: configurar modo (auto/manual), tipo de cambio manual,
@@ -28,8 +28,8 @@ class NLK_Admin_Settings {
 	public static function add_menu_page() {
 		add_submenu_page(
 			'woocommerce',
-			'Sincronización CRC → USD',
-			'CRC → USD',
+			'Sincronización CRC x USD',
+			'Sincronización CRC x USD',
 			'manage_woocommerce',
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
@@ -186,8 +186,13 @@ class NLK_Admin_Settings {
 		);
 		$with_crc = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta}
-				 WHERE meta_key = %s AND meta_value > 0",
+				"SELECT COUNT(DISTINCT pm.post_id)
+				 FROM {$wpdb->postmeta} pm
+				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				 WHERE pm.meta_key = %s
+				   AND pm.meta_value > 0
+				   AND p.post_type IN ('product','product_variation')
+				   AND p.post_status IN ('publish','draft','private')",
 				NLK_Product_Meta::META_KEY
 			)
 		);
@@ -198,11 +203,26 @@ class NLK_Admin_Settings {
 				NLK_Product_Meta::FIXED_USD_KEY
 			)
 		);
-		$without_crc = max( 0, $total_products - $with_crc );
+		$without_crc = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT pm.post_id)
+				 FROM {$wpdb->postmeta} pm
+				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				 WHERE pm.meta_key = '_price'
+				   AND pm.meta_value > 0
+				   AND p.post_type IN ('product','product_variation')
+				   AND p.post_status IN ('publish','draft','private')
+				   AND pm.post_id NOT IN (
+				       SELECT post_id FROM {$wpdb->postmeta}
+				       WHERE meta_key = %s AND meta_value > 0
+				   )",
+				NLK_Product_Meta::META_KEY
+			)
+		);
 
 		?>
 		<div class="wrap">
-			<h1>Sincronización CRC → USD</h1>
+			<h1>Sincronización CRC x USD</h1>
 
 			<?php settings_errors( 'nlk_crc_usd' ); ?>
 

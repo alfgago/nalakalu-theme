@@ -1,6 +1,6 @@
 <?php
 /**
- * Manejo de WP-Cron para actualización programada de precios CRC → USD.
+ * Manejo de WP-Cron para actualización programada de precios CRC x USD.
  *
  * Registra un evento cron que ejecuta la sincronización masiva
  * según la frecuencia configurada en el admin.

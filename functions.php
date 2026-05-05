@@ -198,7 +198,7 @@ if (class_exists('WooCommerce')) {
 }
 
 /**
- * Sincronización de precios CRC → USD para WooCommerce.
+ * Sincronización de precios CRC x USD para WooCommerce.
  */
 if (class_exists('WooCommerce')) {
 	require get_template_directory() . '/sincronizacion-crc-usd/init.php';
