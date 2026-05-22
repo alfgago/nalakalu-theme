@@ -1267,3 +1267,74 @@ function nlk_shop_filter_breadcrumbs() {
 }
 add_action('wp_ajax_nlk_shop_filter_breadcrumbs', 'nlk_shop_filter_breadcrumbs');
 add_action('wp_ajax_nopriv_nlk_shop_filter_breadcrumbs', 'nlk_shop_filter_breadcrumbs');
+
+
+add_filter('woocommerce_package_rates', 'nl_envio_fijo_menor_100', 100, 2);
+
+function nl_envio_fijo_menor_100($rates, $package) {
+
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return $rates;
+    }
+
+    if (!WC()->cart) {
+        return $rates;
+    }
+
+    // Total de productos del carrito, sin contar envío.
+    // Usa el total después de descuentos/cupones.
+    $subtotal_productos = (float) WC()->cart->get_cart_contents_total();
+
+    // Configuración
+    $limite_envio = 100;
+    $costo_envio_fijo = 14;
+
+    // Si compra $100 o más, dejar WooCommerce como está configurado
+    if ($subtotal_productos >= $limite_envio) {
+        return $rates;
+    }
+
+    // Si compra menos de $100, forzar envío fijo de $14
+    $nuevo_rate = new WC_Shipping_Rate(
+        'nl_envio_fijo_menor_100',
+        'Transporte',
+        $costo_envio_fijo,
+        array(),
+        'nl_envio_fijo'
+    );
+
+    return array(
+        'nl_envio_fijo_menor_100' => $nuevo_rate
+    );
+}
+
+add_action('wp_footer', function () {
+    ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        function nlkFixReturnToShopButton() {
+            const btns = document.querySelectorAll('.xoo-wsc-empty-cart .xoo-wsc-btn');
+
+            btns.forEach(function (btn) {
+                btn.href = 'https://nalakalu.stag.host/tienda/';
+            });
+        }
+
+        // Al cargar
+        nlkFixReturnToShopButton();
+
+        // Cuando el carrito lateral se actualiza por AJAX
+        const observer = new MutationObserver(function () {
+            nlkFixReturnToShopButton();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+    });
+    </script>
+    <?php
+});

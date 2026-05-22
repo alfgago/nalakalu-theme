@@ -23,6 +23,17 @@ $desc     = (string) get_field('description');
 $main_url = (string) get_field('video');
 $bg_url   = (string) get_field('background_video_source');
 
+$poster_field = get_field('video_poster');
+$poster_url = '';
+
+if (is_array($poster_field) && !empty($poster_field['url'])) {
+  $poster_url = $poster_field['url'];
+} elseif (is_numeric($poster_field)) {
+  $poster_url = wp_get_attachment_image_url((int) $poster_field, 'full');
+} elseif (is_string($poster_field)) {
+  $poster_url = $poster_field;
+}
+
 /** Helpers con guards para evitar “Cannot redeclare …” */
 if (!function_exists('tv_is_youtube')) {
   function tv_is_youtube($url){ return (bool) preg_match('~(youtube\.com|youtu\.be)~i', (string)$url); }
@@ -136,6 +147,16 @@ if ($main_url) {
           <?php if ( current_user_can('edit_posts') ): ?>
             <div style="padding:2rem;opacity:.7;">Asigná una URL válida (YouTube, Vimeo o MP4) en el campo <em>video</em>.</div>
           <?php endif; ?>
+        <?php endif; ?>
+        
+                <?php if ($poster_url): ?>
+          <img
+            class="nl-player__poster"
+            src="<?php echo esc_url($poster_url); ?>"
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+          >
         <?php endif; ?>
 
         <!-- Overlay de play -->

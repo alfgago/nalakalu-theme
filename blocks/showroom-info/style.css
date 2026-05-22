@@ -71,18 +71,35 @@
 
 .showroom_info_block .info_sh_image_wrapper:hover img { transform: scale(1.05); }
 
-.showroom_info_block .info_sh_badge {
+.info_sh_badge {
   position: absolute;
-  top: 50%; left: 56%;
-  transform: translate(-50%, -50%);
-  width: 180px; height: 180px;
+  top: 50%;
+  left: 56%;
+
+  transform: translate(-50%, -50%) rotate(var(--info-sh-rotate, 0deg));
+  transform-origin: center center;
+
+  width: 180px;
+  height: 180px;
   border-radius: 500px;
   background: rgba(255, 255, 255, 0.40);
   backdrop-filter: blur(20px);
-  display: flex; align-items: center; justify-content: center;  z-index: 10; opacity: 0; scale: .5;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 10;
+  opacity: 0;
+  scale: .5;
+
   animation: info_sh_popIn .6s cubic-bezier(0.68,-0.55,0.265,1.55) .6s forwards;
-  padding:10px;
+
+  padding: 10px;
+  will-change: transform;
 }
+
+
 
 .btn-mapa{
   margin-top:1.05rem;
@@ -166,6 +183,8 @@
 .showroom_info_block .font-body-small p {
     text-align: left;
   margin:1rem 0rem 3rem 0rem;
+  font-size: 2rem;
+  line-height: 2.5rem;
 }
 .showroom_info_block .info_sh_badge {
     position: absolute;

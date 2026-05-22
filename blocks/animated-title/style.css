@@ -1,7 +1,7 @@
 .animated_container {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: clamp(0.5rem, 1vw, 1.25rem);
   padding-top: 8rem;
   padding-bottom: 8rem;
   overflow: hidden;
@@ -171,6 +171,12 @@ html.js .animated_container.js-reveal-ready.is-visible .reveal-fade {
     overflow:visible;
   }
 
+
+.title-row .font-heading-display{
+          font-size: 8rem;
+        line-height: 8rem;
+}
+
   .animated_container {
     overflow-x: hidden;
     gap: 1rem;
@@ -182,7 +188,7 @@ html.js .animated_container.js-reveal-ready.is-visible .reveal-fade {
     height: 70px;
     width: 100%;
     flex: 1 1 auto;
-    max-width: none;
+    max-width: 220px;
   }
 
   .title-row.first {
@@ -207,7 +213,8 @@ html.js .animated_container.js-reveal-ready.is-visible .reveal-fade {
   }
   
   .third .font-body-small{
-    font-size:20px
+    font-size:18px;
+    line-height:20px;
   }
 }
 
@@ -220,5 +227,12 @@ html.js .animated_container.js-reveal-ready.is-visible .reveal-fade {
     transform: none !important;
     opacity: 1 !important;
     clip-path: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .animated_container.animated-title-mobile-small .font-heading-display {
+    font-size: 5rem;
+    line-height: 7rem;
   }
 }

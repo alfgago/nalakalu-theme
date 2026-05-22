@@ -1,108 +1,140 @@
-/* ===== Scroll Video Block ===== */
-html { scroll-behavior: smooth; }
-body { scroll-snap-type: y mandatory; }
-.hero   { scroll-snap-align: start; }
-
-.hero  {
-  padding:0;
-}
-
-.hero   .video-section {
-  height: 150vh;         
-  width: 100%;
-  position: relative;
-}
-
-.hero   .video-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-}
-
-.video-section .font-body-small p{
-  text-align:justify;
-  font-size:1.1rem;
-}
-
-.hero   .canvas-wrapper {
-  position: absolute;
-  inset: 0;
-}
-.hero   .canvas-wrapper video {
-  opacity: 0;              
-  position: absolute;
-  pointer-events: none;
-}
-.hero   .canvas-wrapper canvas {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center center;
-}
-
-
-.hero   .overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,.3);
-  z-index: 2;
-}
-
-
-.hero   .content {
-  position: absolute;
-  left: 0; right: 0; bottom: 60px;
-  padding: 0 3rem;
-  z-index: 3;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 8rem;
-}
-
-
-.hero .logo-container { flex: 3 1 0 ; }
-
-
-.hero .logo-img {
-  min-width: 55rem;
-  height: auto;
-  display: block;
-}
-
-
-.hero    .font-body-small  {
-  flex: 1 1 0;
-}
-
-.font-body-small p{
-    margin:2rem 0rem 0rem 0rem;
-    
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-.hero    .content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0px;
-    padding: 0 1.5rem;
-    bottom: 40px;
-  }
-  .hero    .logo {
-    font-size: 60px;
-    letter-spacing: 10px;
-  }
-.hero .logo-img {
-    min-width: 100%;}
-    
- .hero    .font-body-small  {
-    flex: 1 1 auto;
+  /* ===== Scroll Video Block ===== */
+  html { scroll-behavior: smooth; }
+  body { scroll-snap-type: y mandatory; }
+  .hero   { scroll-snap-align: start; }
+  
+  .hero  {
+    padding:0;
   }
   
-  .content .btn-blanco{width:100%; text-align:center; margin-top:4rem;}
+  .hero   .video-section {
+    height: 150vh;         
+    width: 100%;
+    position: relative;
+  }
+  
+  .hero   .video-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .video-section .font-body-small p{
+    text-align:justify;
+    font-size:1.1rem;
+  }
+  
+  .hero   .canvas-wrapper {
+    position: absolute;
+    inset: 0;
+  }
+  .hero   .canvas-wrapper video {
+    opacity: 0;              
+    position: absolute;
+    pointer-events: none;
+  }
+  .hero   .canvas-wrapper canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+  }
+  
+  
+  .hero   .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.3);
+    z-index: 2;
+  }
+  
+  
+  .hero   .content {
+    position: absolute;
+    left: 0; right: 0; bottom: 60px;
+    padding: 0 3rem;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8rem;
+  }
+  
+  
+  .hero .logo-container { flex: 3 1 0 ; }
+  
+  
+  .hero .logo-img {
+    min-width: 55rem;
+    height: auto;
+    display: block;
+  }
+  
+  
+  .hero    .font-body-small  {
+    flex: 1 1 0;
+  }
+  
+  .font-body-small p{
+      margin:2rem 0rem 0rem 0rem;
+      
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+  .hero    .content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0px;
+      padding: 0 1.5rem;
+      bottom: 40px;
+    }
+    .hero    .logo {
+      font-size: 60px;
+      letter-spacing: 10px;
+    }
+  .hero .logo-img {
+      min-width: 100%;}
+      
+   .hero    .font-body-small  {
+      flex: 1 1 auto;
+    }
+    
+    .content .btn-blanco{width:100%; text-align:center; margin-top:4rem;}
+    
+    .video-section .font-body-small p {
+      text-align: justify;
+      font-size: 2rem;
+      line-height: 3rem;
+  }
+  }
+  
+  
+  
+  
+  
+@media (max-width: 768px) {
+  .hero.nl-scroll-mobile-canvas .canvas-wrapper canvas {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .hero.nl-scroll-mobile-canvas .canvas-wrapper video.nl-video {
+    display: block !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 1px !important;
+    height: 1px !important;
+  }
+
+  .hero.nl-scroll-mobile-canvas .video-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    overflow: hidden;
+  }
 }
-
-

@@ -20,7 +20,7 @@ if (!empty($block['align']))     $class_name .= ' align' . esc_attr($block['alig
 $video_url  = (string) get_field('video_de_fondo');
 $logo_field = get_field('logo'); // array (url, alt, sizes...)
 $desc       = (string) get_field('descripcion');
-$link_custom = 'https://nalakalu.stag.host/cita';
+$link_custom = 'https://stores.nalakalu.com/appointment';
 $logo_url = '';
 $logo_alt = '';
 if (is_array($logo_field)) {
@@ -32,7 +32,7 @@ if (is_array($logo_field)) {
   <section class="video-section" id="<?php echo esc_attr($section_id); ?>-section">
     <div class="video-sticky">
       <div class="canvas-wrapper">
-        <video class="nl-video" muted playsinline preload="auto" crossorigin="anonymous" <?php echo $video_url ? '' : 'style="display:none"'; ?>>
+        <video class="nl-video" muted playsinline autoplay loop preload="auto"  <?php echo $video_url ? '' : 'style="display:none"'; ?>>
           <?php if ($video_url): ?>
             <?php
               // Si es mp4 le agregamos type (no es obligatorio)
@@ -59,155 +59,309 @@ if (is_array($logo_field)) {
           <div class="font-body-small text-white">
             <p><?php echo wp_kses_post( $desc ); ?></p>
           </div>
-          <a class="mobile-only btn btn-blanco" href="<?php echo esc_url($link_custom); ?>">AGENDAR CITA</a>
+          <a target="blank" class="mobile-only btn btn-blanco" href="<?php echo esc_url($link_custom); ?>">AGENDAR CITA</a>
         <?php endif; ?>
       </div>
     </div>
   </section>
 
- <script>
+<script>
 (function(){
-  var root    = document.getElementById('<?php echo esc_js($section_id); ?>');
+  var root = document.getElementById('<?php echo esc_js($section_id); ?>');
   if (!root) return;
 
   var section = document.getElementById('<?php echo esc_js($section_id); ?>-section');
   var wrap    = root.querySelector('.canvas-wrapper');
   var video   = wrap ? wrap.querySelector('video.nl-video') : null;
   var canvas  = wrap ? wrap.querySelector('canvas') : null;
-  if (!wrap || !canvas || !video) return;
 
-  // Canvas eficiente
-  var ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  if (!section || !wrap || !canvas || !video) return;
 
-  // === Tunings ===
-  // Dibujo: dejalo en RAF / rVFC (60fps típico). El "suavizado" lo maneja TIME_CONST
-  var TIME_CONST   = 0.10;      // amortiguación (0.08–0.18). Más alto = más pesado/suave
-  var MAX_STEP     = 0.25;      // salto máx por tick (seg). Útil cuando scrolleás rápido
-  // Seeks desacoplados del dibujo:
-  var SEEK_FPS     = 30;        // como mucho 30 ajustes/seg (no está atado a FPS de canvas)
-  var SEEK_EPS     = 1/28;      // umbral fijo (~36ms). Si diff < EPS, no hagas seek
-  var SNAP_STEP    = 1/30;      // cuantización opcional al “frame” lógico del scrub
+  var isMobile = window.matchMedia('(max-width: 767px)').matches;
 
-  var prog = 0, progTarget = 0;
+  if (isMobile) {
+    root.classList.add('nl-scroll-mobile-canvas');
+  }
+
+  /**
+   * Importante:
+   * En desktop y mobile usamos SIEMPRE:
+   * video oculto + canvas visible + scroll controla currentTime.
+   */
+  video.setAttribute('muted', '');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.setAttribute('preload', 'auto');
+
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+
+  canvas.style.display = 'block';
+
+  // El video queda cargado pero no visible.
+  // No usamos display:none porque en iPhone puede dejar de decodificar frames.
+  video.style.display = 'block';
+  video.style.opacity = '0';
+  video.style.visibility = 'hidden';
+  video.style.position = 'absolute';
+  video.style.width = '1px';
+  video.style.height = '1px';
+  video.style.pointerEvents = 'none';
+
+  var ctx = canvas.getContext('2d', {
+    alpha: false,
+    desynchronized: true
+  });
+
+  // =========================
+  // Tunings
+  // =========================
+  var TIME_CONST = isMobile ? 0.08 : 0.10;
+  var MAX_STEP   = isMobile ? 0.18 : 0.25;
+  var SEEK_FPS   = isMobile ? 24 : 30;
+  var SEEK_EPS   = 1 / 28;
+  var SNAP_STEP  = 1 / 30;
+
+  var prog = 0;
+  var progTarget = 0;
   var lastT = performance.now() / 1000;
   var lastSeekAt = 0;
+  var started = false;
+  var rafId = null;
 
-  // 1) Darle “longitud” a la sección según duración
+  // =========================
+  // Altura de scroll
+  // =========================
   function setScrollLength(){
     var dur = video.duration || 0;
-    var vhPerSec = (window.innerWidth < 768) ? 50 : 75; // un toque más largo = más “frena”
-    var totalVH  = 100 + Math.max(220, dur * vhPerSec); // +100vh por el sticky
+
+    /**
+     * Mobile necesita menos recorrido que desktop,
+     * pero suficiente para que se note el scrub.
+     */
+    var vhPerSec = isMobile ? 60 : 75;
+    var minVH    = isMobile ? 180 : 220;
+    var totalVH  = 100 + Math.max(minVH, dur * vhPerSec);
+
     section.style.height = totalVH + 'vh';
   }
 
-  // 2) Canvas = viewport * DPR cap
+  // =========================
+  // Canvas responsive
+  // =========================
   function fitCanvasToViewport(){
-    var dpr = Math.min(window.devicePixelRatio || 1, 1.4);
-    var w = Math.round(window.innerWidth  * dpr);
+    var dprLimit = isMobile ? 1.15 : 1.4;
+    var dpr = Math.min(window.devicePixelRatio || 1, dprLimit);
+
+    var w = Math.round(window.innerWidth * dpr);
     var h = Math.round(window.innerHeight * dpr);
-    if (canvas.width !== w || canvas.height !== h){
-      canvas.width  = w;
+
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
       canvas.height = h;
     }
+
+    drawCover();
   }
 
+  // =========================
+  // Progreso según scroll
+  // =========================
   function getProgress(){
-    var rect  = section.getBoundingClientRect();
+    var rect = section.getBoundingClientRect();
     var start = window.scrollY + rect.top;
-    var end   = start + section.offsetHeight - window.innerHeight;
-    if (end <= start) return 0; // safety
+    var end = start + section.offsetHeight - window.innerHeight;
+
+    if (end <= start) return 0;
+
     var t = (window.scrollY - start) / (end - start);
+
     return Math.max(0, Math.min(1, t || 0));
   }
 
-  // “object-fit: cover” en canvas
+  // =========================
+  // Dibujar video como object-fit: cover
+  // =========================
   function drawCover(){
-    var vW = video.videoWidth  || 16, vH = video.videoHeight || 9;
-    var cW = canvas.width, cH = canvas.height;
-    if (!cW || !cH) return;
+    if (!ctx || !canvas.width || !canvas.height) return;
+    if (!video.videoWidth || !video.videoHeight) return;
 
-    var vR = vW / vH, cR = cW / cH;
+    var vW = video.videoWidth;
+    var vH = video.videoHeight;
+    var cW = canvas.width;
+    var cH = canvas.height;
+
+    var vR = vW / vH;
+    var cR = cW / cH;
+
     var sx, sy, sw, sh;
-    if (vR > cR){ // recortar laterales
-      sh = vH; sw = vH * cR; sx = (vW - sw) * 0.5; sy = 0;
-    } else {      // recortar arriba/abajo
-      sw = vW; sh = vW / cR; sx = 0; sy = (vH - sh) * 0.5;
+
+    if (vR > cR) {
+      sh = vH;
+      sw = vH * cR;
+      sx = (vW - sw) * 0.5;
+      sy = 0;
+    } else {
+      sw = vW;
+      sh = vW / cR;
+      sx = 0;
+      sy = (vH - sh) * 0.5;
     }
-    try { ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cW, cH); } catch(e){}
+
+    try {
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cW, cH);
+    } catch(e) {}
   }
 
-  // Pintado sincronizado si hay rVFC
-  function onVideoFrame(){
-    drawCover();
-    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(onVideoFrame);
+  // =========================
+  // Desbloqueo para mobile real
+  // =========================
+  function unlockVideoForCanvas(){
+    try {
+      video.currentTime = 0.001;
+    } catch(e) {}
+
+    /**
+     * En celulares reales, sobre todo iPhone/Safari,
+     * ayuda hacer play() y pausar para que el video decodifique frames.
+     */
+    try {
+      var playPromise = video.play();
+
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.then(function(){
+          try {
+            video.pause();
+            video.currentTime = 0.001;
+          } catch(e) {}
+
+          drawCover();
+          startLoop();
+        }).catch(function(){
+          drawCover();
+          startLoop();
+        });
+      } else {
+        try {
+          video.pause();
+          video.currentTime = 0.001;
+        } catch(e) {}
+
+        drawCover();
+        startLoop();
+      }
+    } catch(e) {
+      drawCover();
+      startLoop();
+    }
   }
 
+  // =========================
+  // Loop principal
+  // =========================
   function tick(){
     var now = performance.now() / 1000;
-    var dt  = Math.min(now - lastT, 0.25);
+    var dt = Math.min(now - lastT, 0.25);
     lastT = now;
 
-    // Suavizá el scroll -> progreso
     progTarget = getProgress();
-    var alpha  = 1 - Math.exp(-dt / TIME_CONST);
+
+    var alpha = 1 - Math.exp(-dt / TIME_CONST);
     prog += (progTarget - prog) * alpha;
 
     var dur = video.duration || 0;
-    if (dur > 0){
-      // Tiempo “deseado” (snap a paso lógico de ~1/30s)
+
+    if (dur > 0) {
       var desired = dur * prog;
+
       desired = Math.round(desired / SNAP_STEP) * SNAP_STEP;
+      desired = Math.max(0, Math.min(dur, desired));
 
       var diff = desired - video.currentTime;
-
-      // Rate-limit seeks y no corrijas micro-diferencias
       var canSeek = (now - lastSeekAt) >= (1 / SEEK_FPS);
-      if (canSeek && Math.abs(diff) > SEEK_EPS){
-        var step  = Math.max(-MAX_STEP, Math.min(MAX_STEP, diff));
+
+      if (canSeek && Math.abs(diff) > SEEK_EPS) {
+        var step = Math.max(-MAX_STEP, Math.min(MAX_STEP, diff));
         var nextT = Math.max(0, Math.min(dur, video.currentTime + step));
+
         try {
-          if (typeof video.fastSeek === 'function') video.fastSeek(nextT);
-          else video.currentTime = nextT;
-        } catch(e){}
+          if (typeof video.fastSeek === 'function') {
+            video.fastSeek(nextT);
+          } else {
+            video.currentTime = nextT;
+          }
+        } catch(e) {}
+
         lastSeekAt = now;
       }
     }
 
-    requestAnimationFrame(tick);
+    drawCover();
+
+    rafId = requestAnimationFrame(tick);
   }
 
-  function init(){
-    // Asegura buena carga de frames
-    try {
-      video.preload = 'auto';
-      video.muted = true;
-      video.pause();
-      video.currentTime = 0.001;
-      video.playsInline = true;
-    } catch(e){}
+  function startLoop(){
+    if (started) return;
+
+    started = true;
+    lastT = performance.now() / 1000;
 
     fitCanvasToViewport();
     setScrollLength();
+    drawCover();
 
-    if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(onVideoFrame);
-    else (function loop(){ drawCover(); requestAnimationFrame(loop); })();
-
-    lastT = performance.now() / 1000;
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
   }
 
-  // Opcional: optimizá CPU cuando no está visible
-  var visible = true;
-  var io = new IntersectionObserver(function(entries){
-    visible = entries.some(e => e.isIntersecting);
-    if (visible) { lastT = performance.now() / 1000; }
-  }, { threshold: 0.01 });
-  io.observe(section);
+  // =========================
+  // Init
+  // =========================
+  function init(){
+    fitCanvasToViewport();
+    setScrollLength();
+    unlockVideoForCanvas();
+  }
 
-  video.addEventListener('loadedmetadata', init);
-  window.addEventListener('resize', function(){ fitCanvasToViewport(); setScrollLength(); });
+  // Eventos que ayudan en mobile para repintar el canvas
+  video.addEventListener('loadedmetadata', function(){
+    fitCanvasToViewport();
+    setScrollLength();
+  });
 
-  if (video.readyState >= 1) init();
+  video.addEventListener('loadeddata', function(){
+    drawCover();
+  });
+
+  video.addEventListener('canplay', function(){
+    drawCover();
+  });
+
+  video.addEventListener('seeked', function(){
+    drawCover();
+  });
+
+  window.addEventListener('resize', function(){
+    fitCanvasToViewport();
+    setScrollLength();
+  });
+
+  window.addEventListener('orientationchange', function(){
+    setTimeout(function(){
+      fitCanvasToViewport();
+      setScrollLength();
+      drawCover();
+    }, 300);
+  });
+
+  // Arranque
+  if (video.readyState >= 1) {
+    init();
+  } else {
+    video.addEventListener('loadedmetadata', init, { once: true });
+  }
+
 })();
 </script>
 

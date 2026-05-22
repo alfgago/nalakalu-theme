@@ -212,7 +212,7 @@ $arrow_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="14" vie
                     $avatar_img  = nl_team_img_url($m_row['imagen_1'] ?? null, 'thumbnail') ?: nl_team_img_url($m_row['imagen_1'] ?? null, 'large');
                     if (!$avatar_img) $avatar_img = 'https://via.placeholder.com/80x80?text='.$first_name;
                     ?>
-                    <a class="contact-button<?php echo $is_disabled ? ' is-disabled' : ''; ?><?php echo $m_idx === 0 ? ' active' : ''; ?>"
+                    <a target="blank" class="contact-button<?php echo $is_disabled ? ' is-disabled' : ''; ?><?php echo $m_idx === 0 ? ' active' : ''; ?>"
                        data-index="<?php echo esc_attr($m_idx); ?>"
                        href="<?php echo $href; ?>"<?php echo $disabled_attr; ?>
                        aria-label="<?php echo esc_attr('Contactar a '.$first_name); ?>">

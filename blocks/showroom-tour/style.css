@@ -311,6 +311,7 @@ z-index:9;
 .sh_tour_left .font-body-small {
     max-width: 100%;
     margin-top: 1rem;
+    font-size: 1.5rem;
 }
 
 .only-mobile{

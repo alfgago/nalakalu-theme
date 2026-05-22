@@ -214,6 +214,11 @@ position: absolute;
   .nlk-pilares__content{
     gap:20px;
   }
+  
+  .nlk-pilares__media img[alt="NATURE INSPIRED"] {
+  object-fit: cover ;
+  object-position: center 100%;
+}
 }
 
 @media (max-width: 540px) {

@@ -175,7 +175,7 @@ $q = new WP_Query([
 </div>
   </div>
 
-  <script>
+ <script>
 (function(){
   function initCollectionCarousels(){
     var blocks = document.querySelectorAll('.collection-carousel-selector-block[data-ccs-carousel="1"]');
@@ -185,12 +185,27 @@ $q = new WP_Query([
       if (root.dataset.ccsInitialized === '1') return;
       root.dataset.ccsInitialized = '1';
 
-      var prevBtn = root.querySelector('.prev-btn');
-      var nextBtn = root.querySelector('.next-btn');
-      var grid    = root.querySelector('.ccs_carousel-container');
+      var prevBtns = root.querySelectorAll('.prev-btn');
+      var nextBtns = root.querySelectorAll('.next-btn');
+      var grid     = root.querySelector('.ccs_carousel-container');
+
       if (!grid) return;
 
-      var state = { index: 0, perView: 4 };
+      var state = {
+        index: 0,
+        perView: 4
+      };
+
+      var touch = {
+        active: false,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0
+      };
+
+      var suppressClick = false;
 
       function isMobile(){
         return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
@@ -198,15 +213,24 @@ $q = new WP_Query([
 
       function updatePerView(){
         var w = window.innerWidth;
-        if (w <= 768)       state.perView = 1;  // ✅ mobile = 1 card
-        else if (w <= 1200) state.perView = 3;
-        else                state.perView = 4;
+
+        if (w <= 768) {
+          state.perView = 1;
+        } else if (w <= 1200) {
+          state.perView = 3;
+        } else {
+          state.perView = 4;
+        }
       }
 
       function counts(){
         var total = grid.querySelectorAll('.ccs_carousel-item').length;
         var maxIndex = Math.max(0, total - state.perView);
-        return { total: total, maxIndex: maxIndex };
+
+        return {
+          total: total,
+          maxIndex: maxIndex
+        };
       }
 
       function clamp(i){
@@ -214,27 +238,44 @@ $q = new WP_Query([
         return Math.max(0, Math.min(c.maxIndex, i));
       }
 
+      function getStepSize(){
+        var card = grid.querySelector('.ccs_carousel-item');
+        if (!card) return 0;
+
+        var style = window.getComputedStyle(grid);
+        var gapPx = parseFloat(style.columnGap || style.gap || 0) || 0;
+        var cardW = card.getBoundingClientRect().width;
+
+        return cardW + gapPx;
+      }
+
       function updateButtons(){
         var c = counts();
-        if (prevBtn) prevBtn.disabled = (state.index === 0);
-        if (nextBtn) nextBtn.disabled = (state.index >= c.maxIndex);
+
+        prevBtns.forEach(function(btn){
+          btn.disabled = state.index === 0;
+        });
+
+        nextBtns.forEach(function(btn){
+          btn.disabled = state.index >= c.maxIndex;
+        });
       }
 
       function updateCarousel(animate){
-        var card = grid.querySelector('.ccs_carousel-item');
-        if(!card){
+        var stepSize = getStepSize();
+
+        if (!stepSize) {
           state.index = 0;
           updateButtons();
           return;
         }
 
-        var style = window.getComputedStyle(grid);
-        var gapPx = parseFloat(style.columnGap || style.gap || 0) || 0;
-        var cardW = card.getBoundingClientRect().width;
-        var x = -(state.index * (cardW + gapPx));
+        state.index = clamp(state.index);
 
-        grid.style.transition = animate ? 'transform .5s ease' : 'none';
-        grid.style.transform  = 'translateX(' + x + 'px)';
+        var x = -(state.index * stepSize);
+
+        grid.style.transition = animate ? 'transform .45s ease' : 'none';
+        grid.style.transform  = 'translate3d(' + x + 'px, 0, 0)';
 
         updateButtons();
       }
@@ -244,17 +285,135 @@ $q = new WP_Query([
         updateCarousel(true);
       }
 
-      if (prevBtn) prevBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        var step = isMobile() ? 1 : state.perView;  // ✅ mobile avanza 1
-        go(-step);
+      prevBtns.forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+
+          var step = isMobile() ? 1 : state.perView;
+          go(-step);
+        });
       });
 
-      if (nextBtn) nextBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        var step = isMobile() ? 1 : state.perView;  // ✅ mobile avanza 1
-        go(+step);
+      nextBtns.forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+
+          var step = isMobile() ? 1 : state.perView;
+          go(step);
+        });
       });
+
+      function onTouchStart(e){
+        if (!isMobile()) return;
+        if (!e.touches || e.touches.length !== 1) return;
+
+        var c = counts();
+        if (c.maxIndex <= 0) return;
+
+        touch.active = true;
+        touch.dragging = false;
+        touch.startX = e.touches[0].clientX;
+        touch.startY = e.touches[0].clientY;
+        touch.currentX = touch.startX;
+        touch.currentY = touch.startY;
+
+        grid.style.transition = 'none';
+      }
+
+      function onTouchMove(e){
+        if (!touch.active || !isMobile()) return;
+        if (!e.touches || e.touches.length !== 1) return;
+
+        touch.currentX = e.touches[0].clientX;
+        touch.currentY = e.touches[0].clientY;
+
+        var diffX = touch.currentX - touch.startX;
+        var diffY = touch.currentY - touch.startY;
+
+        var absX = Math.abs(diffX);
+        var absY = Math.abs(diffY);
+
+        // Solo tomamos control si el gesto es claramente horizontal.
+        if (absX > 8 && absX > absY) {
+          touch.dragging = true;
+          e.preventDefault();
+
+          var stepSize = getStepSize();
+          var baseX = -(state.index * stepSize);
+
+          var c = counts();
+
+          // Resistencia en los bordes para que no se vaya de más.
+          var dragX = diffX;
+
+          if (state.index === 0 && diffX > 0) {
+            dragX = diffX * 0.25;
+          }
+
+          if (state.index >= c.maxIndex && diffX < 0) {
+            dragX = diffX * 0.25;
+          }
+
+          grid.style.transform = 'translate3d(' + (baseX + dragX) + 'px, 0, 0)';
+        }
+      }
+
+      function onTouchEnd(){
+        if (!touch.active || !isMobile()) {
+          touch.active = false;
+          touch.dragging = false;
+          return;
+        }
+
+        var diffX = touch.currentX - touch.startX;
+        var diffY = touch.currentY - touch.startY;
+
+        var absX = Math.abs(diffX);
+        var absY = Math.abs(diffY);
+
+        var stepSize = getStepSize();
+        var threshold = Math.max(45, stepSize * 0.18);
+
+        var isHorizontalSwipe = absX > threshold && absX > absY * 1.2;
+
+        if (isHorizontalSwipe) {
+          suppressClick = true;
+
+          if (diffX < 0) {
+            go(1); // swipe hacia izquierda: siguiente
+          } else {
+            go(-1); // swipe hacia derecha: anterior
+          }
+
+          setTimeout(function(){
+            suppressClick = false;
+          }, 350);
+        } else {
+          updateCarousel(true);
+        }
+
+        touch.active = false;
+        touch.dragging = false;
+      }
+
+      function onTouchCancel(){
+        touch.active = false;
+        touch.dragging = false;
+        updateCarousel(true);
+      }
+
+      // Evita que al hacer swipe se dispare el click del producto.
+      grid.addEventListener('click', function(e){
+        if (suppressClick) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+
+      grid.addEventListener('touchstart', onTouchStart, { passive: true });
+      grid.addEventListener('touchmove', onTouchMove, { passive: false });
+      grid.addEventListener('touchend', onTouchEnd, { passive: true });
+      grid.addEventListener('touchcancel', onTouchCancel, { passive: true });
 
       window.addEventListener('resize', function(){
         updatePerView();
@@ -262,10 +421,12 @@ $q = new WP_Query([
         updateCarousel(false);
       });
 
-      // Init
       updatePerView();
       updateCarousel(false);
-      window.addEventListener('load', function(){ updateCarousel(false); });
+
+      window.addEventListener('load', function(){
+        updateCarousel(false);
+      });
     });
   }
 

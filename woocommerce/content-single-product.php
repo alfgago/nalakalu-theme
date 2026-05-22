@@ -129,6 +129,18 @@ if ( ! function_exists('nl_get_category_pair') ) {
   }
 }
 
+
+if (!function_exists('nl_get_variation_attr_input_name')) {
+  function nl_get_variation_attr_input_name($attr_name) {
+    if (function_exists('wc_variation_attribute_name')) {
+      return wc_variation_attribute_name($attr_name);
+    }
+
+    return 'attribute_' . sanitize_title($attr_name);
+  }
+}
+
+
 if (!function_exists('nl_get_collection_name')) {
   function nl_get_collection_name($product) {
     if (!$product) return 'Showroom';
@@ -474,232 +486,26 @@ $crumbs[] = ['label'=>$title, 'url'=>null, 'pos'=>$pos++];
   </ol>
 </nav>
 
-<?php
-/* =========================================================
- *  SHOWROOM (galería principal + badge)
- * ======================================================= */
-$showroom_badge = nl_get_product_showroom_badge_info($product);
-$has_showroom_badge = !empty($showroom_badge['name']) && !empty($showroom_badge['url']);
-$badge_text = $has_showroom_badge ? 'Disponible ahora en ' . $showroom_badge['name'] : '';
 
-$image_ids       = nl_get_product_image_ids($product);
-$banner_id       = nl_get_product_banner_image_id($product);
-$showroom_id     = $banner_id ?: ($image_ids[0] ?? 0);
-$uid             = 'nl-showroom-' . get_the_ID();
-$circle_id       = 'nl-badge-circle-path-' . get_the_ID();
-$use_placeholder = ! $showroom_id && function_exists('wc_placeholder_img_src');
-?>
-<section id="<?php echo esc_attr($uid); ?>" class="nl-showroom-section" aria-label="Showroom del producto">
-  <div class="nl-image-container">
-    <?php if ($use_placeholder): ?>
-      <div class="nl-main-image active" data-index="0">
-        <img src="<?php echo esc_url( wc_placeholder_img_src('full') ); ?>" alt="<?php echo esc_attr(get_the_title()); ?>" />
-        <div class="nl-overlay"></div>
-      </div>
-    <?php elseif ($showroom_id): ?>
-      <div class="nl-main-image active" data-index="0">
-        <?php echo wp_get_attachment_image($showroom_id,'full',false,[
-          'alt'=>trim(get_post_meta($showroom_id,'_wp_attachment_image_alt',true)) ?: get_the_title(),
-          'loading'=>'eager','decoding'=>'async'
-        ]); ?>
-        <div class="nl-overlay"></div>
-      </div>
-    <?php endif; ?>
-  </div>
-
- 
-
-<?php if ($has_showroom_badge): ?>
-  <a
-    class="nl-showroom-badge"
-    href="<?php echo esc_url($showroom_badge['url']); ?>"
-    aria-label="<?php echo esc_attr($badge_text); ?>"
-  >
-    <div class="nl-badge-circle">
-      <div class="nl-gradient-border"></div>
-      <div class="nl-inner-circle"></div>
-
-      <svg class="nl-badge-svg" viewBox="0 0 200 200" aria-hidden="true">
-        <defs>
-          <path id="<?php echo esc_attr($circle_id); ?>" d="M100,100 m-86,0 a86,86 0 1,1 172,0 a86,86 0 1,1 -172,0"></path>
-        </defs>
-
-        <text class="nl-badge-text-svg">
-          <textPath href="#<?php echo esc_attr($circle_id); ?>" startOffset="50%" text-anchor="middle">
-            <?php echo esc_html($badge_text); ?>
-          </textPath>
-        </text>
-      </svg>
-
-      <div class="nl-badge-center" aria-hidden="true">
-        <span class="nl-badge-center-ring"></span>
-        <span class="nl-badge-center-disc"></span>
-
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="13" viewBox="0 0 12 13" class="arrow-icon-product">
-          <path d="M11.1129 9.92419C11.1156 9.9939 11.1047 10.0638 11.0806 10.1298C11.0565 10.1959 11.0198 10.2568 10.9725 10.3091C10.8771 10.4148 10.7445 10.4791 10.604 10.4877C10.4635 10.4964 10.3266 10.4488 10.2233 10.3554C10.12 10.262 10.0589 10.1304 10.0534 9.9896L9.73424 1.86317L0.926969 11.9948C0.833551 12.1022 0.702211 12.169 0.561845 12.1804C0.421479 12.1918 0.283583 12.1469 0.178494 12.0555C0.0734036 11.9642 0.00972796 11.8339 0.00147502 11.6933C-0.00677792 11.5527 0.0410676 11.4133 0.134486 11.3059L8.94081 1.17536L0.850579 1.9907C0.781167 1.99768 0.711364 1.99091 0.645157 1.97077C0.578951 1.95064 0.517635 1.91752 0.464714 1.87332C0.411793 1.82913 0.368301 1.77471 0.336722 1.71318C0.305144 1.65165 0.286095 1.58422 0.280666 1.51472C0.275237 1.44523 0.283533 1.37505 0.30508 1.30817C0.326628 1.24129 0.361004 1.17904 0.406247 1.12496C0.451491 1.07089 0.506715 1.02604 0.568767 0.992996C0.630818 0.959948 0.698482 0.939344 0.767895 0.932357L9.98707 0.00379129C10.0819 -0.00573188 10.1772 0.0039978 10.2674 0.0323982C10.3575 0.0607983 10.4406 0.107285 10.5117 0.169075C10.5828 0.230865 10.6404 0.306687 10.681 0.392002C10.7217 0.477316 10.7446 0.570369 10.7484 0.66559L11.1129 9.92419Z" fill="#3D332B"/>
-        </svg>
-      </div>
-    </div>
-  </a>
-<?php endif; ?>
-</section>
-
-<script>
-(function(){
-  var badges = document.querySelectorAll('.nl-showroom-section .nl-showroom-badge');
-
-  if (!badges.length) return;
-
-  var ticking = false;
-
-  function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-
-  function updateBadgeRotation() {
-    var windowH = window.innerHeight || document.documentElement.clientHeight;
-
-    badges.forEach(function(badge){
-      var section = badge.closest('.nl-showroom-section');
-      if (!section) return;
-
-      var rect = section.getBoundingClientRect();
-
-      var progress = (windowH - rect.top) / (windowH + rect.height);
-      progress = clamp(progress, 0, 1);
-
-      var rotation = progress * 360;
-
-      badge.style.setProperty('--nl-badge-scroll-rotate', rotation + 'deg');
-    });
-
-    ticking = false;
-  }
-
-  function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    window.requestAnimationFrame(updateBadgeRotation);
-  }
-
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll);
-
-  updateBadgeRotation();
-})();
-</script>
-
-<script>
-(function(){
-  var root = document.getElementById('<?php echo esc_js($uid); ?>');
-  if(!root) return;
-  return;
-
-  var thumbs = root.querySelectorAll('.nl-thumbnail');
-  var mains  = root.querySelectorAll('.nl-main-image');
-
-  if (!mains || mains.length === 0) return;
-
-  var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // Detectar índice actual (el que está activo al cargar)
-  var currentIndex = 0;
-  mains.forEach(function(m){
-    if (m.classList.contains('active')) {
-      var idx = parseInt(m.getAttribute('data-index'), 10);
-      if (!isNaN(idx)) currentIndex = idx;
-    }
-  });
-
-  function activate(idx){
-    currentIndex = idx;
-
-    mains.forEach(function(m){ m.classList.remove('active'); });
-    thumbs.forEach(function(t){ t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
-
-    var candidate = root.querySelector('.nl-main-image[data-index="'+idx+'"]');
-    if(candidate) candidate.classList.add('active');
-
-    var thumbBtn = root.querySelector('.nl-thumbnail[data-target="'+idx+'"]');
-    if(thumbBtn){
-      thumbBtn.classList.add('active');
-      thumbBtn.setAttribute('aria-selected','true');
-    }
-  }
-
-  // Click / teclado en miniaturas
-  thumbs.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var idx = parseInt(this.getAttribute('data-target'), 10);
-      if (!isNaN(idx)) {
-        activate(idx);
-        resetAutoplay();
-      }
-    });
-    btn.addEventListener('keydown', function(e){
-      if(e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        var idx = parseInt(this.getAttribute('data-target'), 10);
-        if (!isNaN(idx)) {
-          activate(idx);
-          resetAutoplay();
-        }
-      }
-    });
-  });
-
-  // -------------------------
-  // AUTOPLAY cada 3s
-  // -------------------------
-  var timer = null;
-  var INTERVAL = 3000;
-
-  function next(){
-    var nextIndex = (currentIndex + 1) % mains.length;
-    activate(nextIndex);
-  }
-
-  function startAutoplay(){
-    if (prefersReduced) return;
-    if (mains.length < 2) return;
-    stopAutoplay();
-    timer = setInterval(next, INTERVAL);
-  }
-
-  function stopAutoplay(){
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-  }
-
-  function resetAutoplay(){
-    startAutoplay();
-  }
-
-  // Pausa cuando el usuario está interactuando (hover/focus) y vuelve al salir
-  root.addEventListener('mouseenter', stopAutoplay);
-  root.addEventListener('mouseleave', startAutoplay);
-  root.addEventListener('focusin', stopAutoplay);
-  root.addEventListener('focusout', startAutoplay);
-
-  // Arrancar
-  startAutoplay();
-})();
-</script>
 
 
 <?php
 /* =========================================================
  *  INFO PRODUCTO (título, desc, precio, add to cart + galería thumbs)
  * ======================================================= */
-$image_ids  = nl_get_product_image_ids($product);
-// Banner/showroom is hidden via CSS; show every available image in the carousel below.
-// Original behavior (kept for reference): array_diff($image_ids, $showroom_id ? [$showroom_id] : []).
-$gallery_image_ids = $image_ids;
-$main_id    = $gallery_image_ids[0] ?? 0;
-$thumb_ids  = $gallery_image_ids;
-$main_full  = $main_id ? wp_get_attachment_image_url($main_id, 'full') : '';
+// Solo imagen principal + galería del producto.
+// No usar nl_get_product_image_ids() porque probablemente incluye imágenes de variaciones.
+$main_product_id = $product->get_image_id();
+$gallery_ids     = $product->get_gallery_image_ids();
+
+$gallery_image_ids = array_values(array_unique(array_filter(array_merge(
+  [$main_product_id],
+  $gallery_ids
+))));
+
+$main_id   = $gallery_image_ids[0] ?? 0;
+$thumb_ids = $gallery_image_ids;
+$main_full = $main_id ? wp_get_attachment_image_url($main_id, 'full') : '';
 
 $main_html  = $main_id
   ? wp_get_attachment_image($main_id, 'large', false, [
@@ -738,34 +544,48 @@ if ( $product->is_type('variable') ) {
   <?php
     // ======================================================
     // UI Variaciones:
-    // - Atributos SIN imagen => radio “texto” (como venías)
-    // - Atributos CON imagen => swatches en tabs (como captura)
+    // - Atributos SIN imagen => radio texto
+    // - Atributos CON imagen => máximo 3 en tabs
+    // - Atributos CON imagen desde el 4to => swatches con imagen abajo, fuera de tabs
     // ======================================================
 
     if ( ! function_exists('nlk__attr_term_image_url') ) {
       function nlk__attr_term_image_url($term_id){
         // 1) meta comunes
         $meta_keys = ['thumbnail_id','image_id','product_attribute_image','swatch_image','term_image','image'];
+
         foreach ($meta_keys as $k){
           $v = get_term_meta($term_id, $k, true);
+
           if (is_numeric($v) && (int)$v) {
             $u = wp_get_attachment_image_url((int)$v, 'medium');
             if ($u) return $u;
           }
-          if (is_string($v) && preg_match('~^https?://~', $v)) return $v;
+
+          if (is_string($v) && preg_match('~^https?://~', $v)) {
+            return $v;
+          }
         }
 
-        // 2) ACF en términos (si lo usás)
+        // 2) ACF en términos
         if (function_exists('get_field')) {
           $acf_keys = ['imagen','image','swatch','thumbnail'];
+
           foreach ($acf_keys as $k){
             $v = get_field($k, 'term_'.$term_id);
-            if (is_array($v) && !empty($v['url'])) return $v['url'];
+
+            if (is_array($v) && !empty($v['url'])) {
+              return $v['url'];
+            }
+
             if (is_numeric($v) && (int)$v) {
               $u = wp_get_attachment_image_url((int)$v, 'medium');
               if ($u) return $u;
             }
-            if (is_string($v) && preg_match('~^https?://~', $v)) return $v;
+
+            if (is_string($v) && preg_match('~^https?://~', $v)) {
+              return $v;
+            }
           }
         }
 
@@ -776,14 +596,23 @@ if ( $product->is_type('variable') ) {
     if ( ! function_exists('nlk__attr_term_group') ) {
       function nlk__attr_term_group($term_id){
         $keys = ['grupo','group','tone_group','familia','coleccion'];
+
         foreach ($keys as $k){
           $v = get_term_meta($term_id, $k, true);
-          if (is_string($v) && trim($v) !== '') return trim($v);
+
+          if (is_string($v) && trim($v) !== '') {
+            return trim($v);
+          }
+
           if (function_exists('get_field')) {
             $v2 = get_field($k, 'term_'.$term_id);
-            if (is_string($v2) && trim($v2) !== '') return trim($v2);
+
+            if (is_string($v2) && trim($v2) !== '') {
+              return trim($v2);
+            }
           }
         }
+
         return '';
       }
     }
@@ -792,48 +621,84 @@ if ( $product->is_type('variable') ) {
     $default_attributes   = $product->get_default_attributes();
     $available_variations = nl_get_available_variations_with_price_html($product);
 
-    $text_attrs  = []; // radios texto
-    $image_attrs = []; // tabs swatches
+    $text_attrs         = []; // radios texto, sin imagen
+    $image_attrs        = []; // tabs swatches, máximo 3
+    $image_inline_attrs = []; // swatches con imagen fuera de tabs, desde el 4to
+
+    $max_image_tabs  = 3;
+    $image_tab_count = 0;
 
     foreach ($variation_attributes as $attr_name => $options) {
-      $attr_key   = 'attribute_' . $attr_name;
-      $label      = function_exists('wc_attribute_label') ? wc_attribute_label($attr_name) : ucwords(str_replace(['pa_','_'],['',' '], $attr_name));
-      $label_up   = function_exists('mb_strtoupper') ? mb_strtoupper($label, 'UTF-8') : strtoupper($label);
+      $attr_key = function_exists('wc_variation_attribute_name')
+  ? wc_variation_attribute_name($attr_name)
+  : 'attribute_' . sanitize_title($attr_name);
+
+      $label = function_exists('wc_attribute_label')
+        ? wc_attribute_label($attr_name)
+        : ucwords(str_replace(['pa_','_'], ['', ' '], $attr_name));
+
+      $label_up = function_exists('mb_strtoupper')
+        ? mb_strtoupper($label, 'UTF-8')
+        : strtoupper($label);
 
       $opts = is_array($options) ? $options : [];
-      $opts = array_values(array_filter($opts, function($x){ return $x !== '' && $x !== null; }));
+      $opts = array_values(array_filter($opts, function($x){
+        return $x !== '' && $x !== null;
+      }));
 
-      // default para este atributo
+      // Default para este atributo
       $def = '';
-      if (!empty($default_attributes[$attr_name])) $def = (string)$default_attributes[$attr_name];
-      if (!$def && !empty($opts)) $def = (string)$opts[0];
 
-      // detecta si tiene imágenes
+      if (!empty($default_attributes[$attr_name])) {
+        $def = (string)$default_attributes[$attr_name];
+      }
+
+      if (!$def && !empty($opts)) {
+        $def = (string)$opts[0];
+      }
+
+      // Detecta si el atributo tiene imágenes en sus términos
       $has_images = false;
+
       if (taxonomy_exists($attr_name)) {
         foreach ($opts as $slug) {
           $term = get_term_by('slug', (string)$slug, $attr_name);
+
           if ($term && !is_wp_error($term)) {
             $img = nlk__attr_term_image_url((int)$term->term_id);
-            if ($img) { $has_images = true; break; }
+
+            if ($img) {
+              $has_images = true;
+              break;
+            }
           }
         }
       }
 
       if ($has_images) {
-        // armamos grupos (Cálidos/Fríos/etc) si existen
+        // Arma grupos de swatches con imagen
         $groups = [];
+
         foreach ($opts as $slug) {
           $slug = (string)$slug;
           $term = taxonomy_exists($attr_name) ? get_term_by('slug', $slug, $attr_name) : null;
-          if (!$term || is_wp_error($term)) continue;
+
+          if (!$term || is_wp_error($term)) {
+            continue;
+          }
 
           $img   = nlk__attr_term_image_url((int)$term->term_id);
           $name  = !empty($term->name) ? $term->name : $slug;
           $group = nlk__attr_term_group((int)$term->term_id);
 
           $gkey = $group !== '' ? $group : '__default__';
-          if (!isset($groups[$gkey])) $groups[$gkey] = ['label'=>$group, 'items'=>[]];
+
+          if (!isset($groups[$gkey])) {
+            $groups[$gkey] = [
+              'label' => $group,
+              'items' => [],
+            ];
+          }
 
           $groups[$gkey]['items'][] = [
             'slug' => $slug,
@@ -842,43 +707,56 @@ if ( $product->is_type('variable') ) {
           ];
         }
 
-        $tab_id = sanitize_title($label);
-
-        $image_attrs[] = [
+        $image_attr_data = [
           'attr_name' => $attr_name,
           'attr_key'  => $attr_key,
           'label'     => $label,
           'label_up'  => $label_up,
-          'tab_id'    => $tab_id,
+          'tab_id'    => sanitize_title($label . '-' . $attr_name),
           'default'   => $def,
           'groups'    => $groups,
         ];
+
+        // Máximo 3 atributos con imagen como tabs
+        if ($image_tab_count < $max_image_tabs) {
+          $image_attrs[] = $image_attr_data;
+          $image_tab_count++;
+        } else {
+          // Desde el 4to atributo con imagen, va abajo con imagen, sin tab
+          $image_inline_attrs[] = $image_attr_data;
+        }
+
       } else {
-        // radios texto (sin imágenes)
+        // Radios texto, solo para atributos sin imagen
         $items = [];
+
         foreach ($opts as $raw_opt) {
           $slug = (string)$raw_opt;
           $opt_label = $slug;
 
-          // si es taxonomía, mostramos el nombre del término
           if (taxonomy_exists($attr_name)) {
             $term = get_term_by('slug', $slug, $attr_name);
-            if ($term && !is_wp_error($term) && !empty($term->name)) $opt_label = $term->name;
+
+            if ($term && !is_wp_error($term) && !empty($term->name)) {
+              $opt_label = $term->name;
+            }
           }
 
-          // split “Titulo: detalle”
+          // Split “Titulo: detalle”
           $title_line = trim($opt_label);
           $sub_line   = '';
+
           $parts = explode(':', $opt_label, 2);
+
           if (count($parts) === 2) {
-            $title_line = trim($parts[0]).':';
+            $title_line = trim($parts[0]) . ':';
             $sub_line   = trim($parts[1]);
           }
 
           $items[] = [
-            'slug' => $slug,
-            'title'=> $title_line,
-            'sub'  => $sub_line,
+            'slug'  => $slug,
+            'title' => $title_line,
+            'sub'   => $sub_line,
           ];
         }
 
@@ -901,71 +779,41 @@ if ( $product->is_type('variable') ) {
 
   <div class="info-product-variations" data-role="variations" data-variations="<?php echo esc_attr($variations_json); ?>">
 
-    <?php if (!empty($text_attrs)) : ?>
-      <div class="info-product-variation-list">
-        <?php foreach ($text_attrs as $a) : ?>
-          <div class="info-product-variation info-product-variation--radios" data-attr="<?php echo esc_attr($a['attr_key']); ?>">
-            <span class="screen-reader-text"><?php echo esc_html($a['label']); ?></span>
-
-            <div class="info-product-radio-list" role="radiogroup" aria-label="<?php echo esc_attr($a['label']); ?>">
-              <?php foreach ($a['items'] as $it) : ?>
-                <label class="info-product-radio-item">
-                  <input
-                    type="radio"
-                    class="info-product-radio"
-                    name="<?php echo esc_attr($a['attr_key']); ?>"
-                    value="<?php echo esc_attr($it['slug']); ?>"
-                    <?php checked($a['default'] === $it['slug']); ?>
-                  >
-                  <span class="info-product-radio-ui" aria-hidden="true"></span>
-
-                  <span class="info-product-radio-text">
-                    <span class="info-product-radio-title font-button"><?php echo esc_html($it['title']); ?></span>
-                    <?php if ($it['sub'] !== '') : ?>
-                      <span class="info-product-radio-sub font-body-small"><?php echo esc_html($it['sub']); ?></span>
-                    <?php endif; ?>
-                  </span>
-                </label>
-              <?php endforeach; ?>
-            </div>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-
     <?php if (!empty($image_attrs)) : ?>
       <div class="info-product-var-tabs" data-role="img-tabs">
+
         <?php if (count($image_attrs) > 1) : ?>
           <div class="info-product-var-tabs__head" role="tablist" aria-label="Opciones con imagen">
             <?php foreach ($image_attrs as $i => $a) : ?>
               <button
                 type="button"
-                class="info-product-var-tab<?php echo $i===0 ? ' is-active' : ''; ?>"
+                class="info-product-var-tab<?php echo $i === 0 ? ' is-active' : ''; ?>"
                 data-tab="<?php echo esc_attr($a['tab_id']); ?>"
                 role="tab"
-                aria-selected="<?php echo $i===0 ? 'true' : 'false'; ?>"
+                aria-selected="<?php echo $i === 0 ? 'true' : 'false'; ?>"
               >
                 <?php echo esc_html($a['label_up']); ?>
               </button>
             <?php endforeach; ?>
           </div>
         <?php endif; ?>
-<?php if (count($image_attrs) === 1) : ?>
-  <div class="info-product-var-tabs__single-title font-overline">
-    <?php echo esc_html($image_attrs[0]['label_up']); ?>
-  </div>
-<?php endif; ?>
+
+        <?php if (count($image_attrs) === 1) : ?>
+          <div class="info-product-var-tabs__single-title font-overline">
+            <?php echo esc_html($image_attrs[0]['label_up']); ?>
+          </div>
+        <?php endif; ?>
 
         <div class="info-product-var-tabs__panes">
           <?php foreach ($image_attrs as $i => $a) : ?>
-          
             <div
-              class="info-product-var-pane<?php echo ($i===0 ? ' is-active' : ''); ?>"
+              class="info-product-var-pane<?php echo $i === 0 ? ' is-active' : ''; ?>"
               data-pane="<?php echo esc_attr($a['tab_id']); ?>"
               role="tabpanel"
             >
               <?php foreach ($a['groups'] as $g) : ?>
                 <?php $show_group_title = ($g['label'] !== '') || (count($a['groups']) > 1); ?>
+
                 <div class="info-product-swatch-group">
                   <?php if ($show_group_title) : ?>
                     <div class="info-product-swatch-group__title font-button">
@@ -983,14 +831,25 @@ if ( $product->is_type('variable') ) {
                           value="<?php echo esc_attr($it['slug']); ?>"
                           <?php checked($a['default'] === $it['slug']); ?>
                         >
+
                         <span class="info-product-swatch__circle" aria-hidden="true">
                           <?php if (!empty($it['img'])) : ?>
-                            <img src="<?php echo esc_url($it['img']); ?>" alt="<?php echo esc_attr($it['name']); ?>" loading="lazy" decoding="async">
+                            <img
+                              src="<?php echo esc_url($it['img']); ?>"
+                              alt="<?php echo esc_attr($it['name']); ?>"
+                              loading="lazy"
+                              decoding="async"
+                            >
                           <?php else : ?>
-                            <span class="info-product-swatch__fallback"><?php echo esc_html(mb_substr($it['name'], 0, 2)); ?></span>
+                            <span class="info-product-swatch__fallback">
+                              <?php echo esc_html(function_exists('mb_substr') ? mb_substr($it['name'], 0, 2) : substr($it['name'], 0, 2)); ?>
+                            </span>
                           <?php endif; ?>
                         </span>
-                        <span class="screen-reader-text"><?php echo esc_html($it['name']); ?></span>
+
+                        <span class="screen-reader-text">
+                          <?php echo esc_html($it['name']); ?>
+                        </span>
                       </label>
                     <?php endforeach; ?>
                   </div>
@@ -999,6 +858,109 @@ if ( $product->is_type('variable') ) {
             </div>
           <?php endforeach; ?>
         </div>
+      </div>
+    <?php endif; ?>
+
+
+    <?php if (!empty($image_inline_attrs)) : ?>
+      <div class="info-product-var-inline-list">
+        <?php foreach ($image_inline_attrs as $a) : ?>
+          <div
+            class="info-product-var-inline"
+            data-attr="<?php echo esc_attr($a['attr_key']); ?>"
+          >
+            <div class="info-product-var-inline__title font-overline">
+              <?php echo esc_html($a['label_up']); ?>
+            </div>
+
+            <?php foreach ($a['groups'] as $g) : ?>
+              <?php $show_group_title = ($g['label'] !== '') || (count($a['groups']) > 1); ?>
+
+              <div class="info-product-swatch-group">
+                <?php if ($show_group_title) : ?>
+                  <div class="info-product-swatch-group__title font-button">
+                    <?php echo esc_html($g['label'] !== '' ? $g['label'] : 'Opciones'); ?>
+                  </div>
+                <?php endif; ?>
+
+                <div class="info-product-swatch-row" role="radiogroup" aria-label="<?php echo esc_attr($a['label']); ?>">
+                  <?php foreach ($g['items'] as $it) : ?>
+                    <label class="info-product-swatch">
+                      <input
+                        type="radio"
+                        class="info-product-swatch__input"
+                        name="<?php echo esc_attr($a['attr_key']); ?>"
+                        value="<?php echo esc_attr($it['slug']); ?>"
+                        <?php checked($a['default'] === $it['slug']); ?>
+                      >
+
+                      <span class="info-product-swatch__circle" aria-hidden="true">
+                        <?php if (!empty($it['img'])) : ?>
+                          <img
+                            src="<?php echo esc_url($it['img']); ?>"
+                            alt="<?php echo esc_attr($it['name']); ?>"
+                            loading="lazy"
+                            decoding="async"
+                          >
+                        <?php else : ?>
+                          <span class="info-product-swatch__fallback">
+                            <?php echo esc_html(function_exists('mb_substr') ? mb_substr($it['name'], 0, 2) : substr($it['name'], 0, 2)); ?>
+                          </span>
+                        <?php endif; ?>
+                      </span>
+
+                      <span class="screen-reader-text">
+                        <?php echo esc_html($it['name']); ?>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
+
+    <?php if (!empty($text_attrs)) : ?>
+      <div class="info-product-variation-list">
+        <?php foreach ($text_attrs as $a) : ?>
+          <div class="info-product-variation info-product-variation--radios" data-attr="<?php echo esc_attr($a['attr_key']); ?>">
+
+            <div class="info-product-variation-title font-overline">
+              <?php echo esc_html($a['label_up']); ?>
+            </div>
+
+            <div class="info-product-radio-list" role="radiogroup" aria-label="<?php echo esc_attr($a['label']); ?>">
+              <?php foreach ($a['items'] as $it) : ?>
+                <label class="info-product-radio-item">
+                  <input
+                    type="radio"
+                    class="info-product-radio"
+                    name="<?php echo esc_attr($a['attr_key']); ?>"
+                    value="<?php echo esc_attr($it['slug']); ?>"
+                    <?php checked($a['default'] === $it['slug']); ?>
+                  >
+
+                  <span class="info-product-radio-ui" aria-hidden="true"></span>
+
+                  <span class="info-product-radio-text">
+                    <span class="info-product-radio-title font-button">
+                      <?php echo esc_html($it['title']); ?>
+                    </span>
+
+                    <?php if ($it['sub'] !== '') : ?>
+                      <span class="info-product-radio-sub font-body-small">
+                        <?php echo esc_html($it['sub']); ?>
+                      </span>
+                    <?php endif; ?>
+                  </span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
 
@@ -1012,7 +974,6 @@ if ( $product->is_type('variable') ) {
           <div class="font-button">Precio</div>
           <div>
             <span class="info-product-price"><?php echo wp_kses_post($price_html); ?></span>
-            <span class="info-product-price-tax"><?php echo esc_html($tax_suffix); ?></span>
           </div>
         </div>
 
@@ -1061,23 +1022,34 @@ if ( $product->is_type('variable') ) {
             <input type="hidden" name="variation_id" class="variation_id" data-role="variation-id" value="<?php echo esc_attr($v_id_default); ?>">
 
             <?php foreach ($variation_attributes as $attr_name => $_opts) : ?>
-              <?php
-                $attr_key = 'attribute_' . $attr_name;
-                $val = $default_attributes[$attr_name] ?? '';
+  <?php
+    $attr_key = function_exists('wc_variation_attribute_name')
+      ? wc_variation_attribute_name($attr_name)
+      : 'attribute_' . sanitize_title($attr_name);
 
-                // si es el primer atributo y no hay default, setea primer opción
-                if (!$val && $attr_name === $first_attr_name && !empty($_opts) && is_array($_opts)) {
-                  $val = (string) $_opts[0];
-                }
-              ?>
-              <input
-                type="hidden"
-                name="<?php echo esc_attr($attr_key); ?>"
-                value="<?php echo esc_attr($val); ?>"
-                data-role="attr-hidden"
-                data-attr="<?php echo esc_attr($attr_key); ?>"
-              >
-            <?php endforeach; ?>
+    $attr_slug = sanitize_title($attr_name);
+
+    $val = '';
+
+    if (isset($default_attributes[$attr_name]) && $default_attributes[$attr_name] !== '') {
+      $val = (string) $default_attributes[$attr_name];
+    } elseif (isset($default_attributes[$attr_slug]) && $default_attributes[$attr_slug] !== '') {
+      $val = (string) $default_attributes[$attr_slug];
+    }
+
+    // Si no hay default, setea la primera opción para CADA atributo
+    if (!$val && !empty($_opts) && is_array($_opts)) {
+      $val = (string) reset($_opts);
+    }
+  ?>
+  <input
+    type="hidden"
+    name="<?php echo esc_attr($attr_key); ?>"
+    value="<?php echo esc_attr($val); ?>"
+    data-role="attr-hidden"
+    data-attr="<?php echo esc_attr($attr_key); ?>"
+  >
+<?php endforeach; ?>
 
             <button type="submit" class="single_add_to_cart_button button alt info-product-add-button" data-role="add-btn">Agregar al carrito</button>
             <?php do_action('woocommerce_after_add_to_cart_button'); ?>
@@ -1208,10 +1180,12 @@ if (!$thumb) {
   var addBtn   = form.querySelector('[data-role="add-btn"]');
   var varIdEl  = form.querySelector('[data-role="variation-id"]');
   var qtyInput = form.querySelector('input.qty');
+
   var hiddenAttrInputs = Array.from(form.querySelectorAll('[data-role="attr-hidden"]'));
   var allRadioInputs   = Array.from(ui.querySelectorAll('input[type="radio"]'));
 
   var variations = [];
+
   try {
     variations = JSON.parse(ui.getAttribute('data-variations') || '[]');
   } catch(e) {
@@ -1225,58 +1199,132 @@ if (!$thumb) {
     msgEl.innerHTML = html || '';
   }
 
+  function normalizeValue(value){
+    return String(value || '')
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/&amp;/g, '&')
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function valuesEqual(a, b){
+    a = String(a || '').trim();
+    b = String(b || '').trim();
+
+    return a === b || normalizeValue(a) === normalizeValue(b);
+  }
+
+  function normalizeAttrName(name){
+    return normalizeValue(String(name || '').replace(/^attribute_/, ''));
+  }
+
+  function getVariationAttrValue(variation, attrName){
+    if (!variation || !variation.attributes) return undefined;
+
+    var attrs = variation.attributes;
+
+    if (Object.prototype.hasOwnProperty.call(attrs, attrName)) {
+      return attrs[attrName];
+    }
+
+    var wanted = normalizeAttrName(attrName);
+
+    for (var key in attrs) {
+      if (!Object.prototype.hasOwnProperty.call(attrs, key)) continue;
+
+      if (normalizeAttrName(key) === wanted) {
+        return attrs[key];
+      }
+    }
+
+    return undefined;
+  }
+
+  function getSelectedValueForAttr(selected, attrName){
+    if (Object.prototype.hasOwnProperty.call(selected, attrName)) {
+      return selected[attrName];
+    }
+
+    var wanted = normalizeAttrName(attrName);
+
+    for (var key in selected) {
+      if (!Object.prototype.hasOwnProperty.call(selected, key)) continue;
+
+      if (normalizeAttrName(key) === wanted) {
+        return selected[key];
+      }
+    }
+
+    return '';
+  }
+
   function radiosByName(name){
-    return allRadioInputs.filter(function(r){ return r.name === name; });
+    return allRadioInputs.filter(function(r){
+      return r.name === name;
+    });
   }
 
   function getCheckedRadioValue(name){
     var radios = radiosByName(name);
+
     for (var i = 0; i < radios.length; i++) {
-      if (radios[i].checked) return radios[i].value || '';
+      if (radios[i].checked) {
+        return radios[i].value || '';
+      }
     }
+
     return '';
   }
 
   function getSelected(){
     var out = {};
+
     hiddenAttrInputs.forEach(function(h){
       var val = getCheckedRadioValue(h.name);
-      if (!val) val = h.value || '';
+
+      if (!val) {
+        val = h.value || '';
+      }
+
       out[h.name] = val;
     });
-    return out;
-  }
 
-  function setHiddenAttributes(selected){
-    hiddenAttrInputs.forEach(function(inp){
-      inp.value = selected[inp.name] || '';
-    });
+    return out;
   }
 
   function allChosen(selected){
     for (var k in selected) {
-      if (!selected[k]) return false;
+      if (!selected[k]) {
+        return false;
+      }
     }
+
     return true;
   }
 
   function partialMatchVariation(variation, selected){
     if (!variation || !variation.attributes) return false;
 
-    var attrs = variation.attributes;
-
     for (var key in selected) {
-      if (!selected.hasOwnProperty(key)) continue;
+      if (!Object.prototype.hasOwnProperty.call(selected, key)) continue;
 
       var wanted = String(selected[key] || '');
       if (!wanted) continue;
 
-      var current = (typeof attrs[key] !== 'undefined') ? String(attrs[key] || '') : '';
+      var current = getVariationAttrValue(variation, key);
 
-      // si la variación no define ese attr o viene vacío, no bloquea
-      if (current === '') continue;
+      // Si Woo dejó ese atributo como "Any", viene vacío y no bloquea
+      if (typeof current === 'undefined' || String(current || '') === '') {
+        continue;
+      }
 
-      if (current !== wanted) return false;
+      if (!valuesEqual(current, wanted)) {
+        return false;
+      }
     }
 
     return true;
@@ -1285,19 +1333,35 @@ if (!$thumb) {
   function exactMatchVariation(selected){
     for (var i = 0; i < variations.length; i++) {
       var v = variations[i];
+
       if (!v || !v.attributes) continue;
 
       var attrs = v.attributes;
       var ok = true;
 
-      for (var key in selected){
-        if (!selected.hasOwnProperty(key)) continue;
+      // 1) Lo elegido por el usuario debe coincidir con la variación
+      for (var key in selected) {
+        if (!Object.prototype.hasOwnProperty.call(selected, key)) continue;
 
-        var want = String(selected[key] || '');
-        var got  = (typeof attrs[key] !== 'undefined') ? String(attrs[key] || '') : '';
+        var wanted = String(selected[key] || '');
+        if (!wanted) {
+          ok = false;
+          break;
+        }
 
-        if (got === '') continue;
-        if (got !== want) {
+        var current = getVariationAttrValue(v, key);
+
+        if (typeof current === 'undefined') {
+          ok = false;
+          break;
+        }
+
+        // "Any attribute" en Woo
+        if (String(current || '') === '') {
+          continue;
+        }
+
+        if (!valuesEqual(current, wanted)) {
           ok = false;
           break;
         }
@@ -1305,19 +1369,27 @@ if (!$thumb) {
 
       if (!ok) continue;
 
-      for (var a in attrs){
-        if (!attrs.hasOwnProperty(a)) continue;
+      // 2) Todo atributo definido por Woo debe estar elegido
+      for (var attrName in attrs) {
+        if (!Object.prototype.hasOwnProperty.call(attrs, attrName)) continue;
 
-        var need = String(attrs[a] || '');
-        if (!need) continue;
+        var needed = String(attrs[attrName] || '');
 
-        if (!selected[a] || String(selected[a]) !== need) {
+        if (!needed) {
+          continue;
+        }
+
+        var selectedValue = getSelectedValueForAttr(selected, attrName);
+
+        if (!selectedValue || !valuesEqual(needed, selectedValue)) {
           ok = false;
           break;
         }
       }
 
-      if (ok) return v;
+      if (ok) {
+        return v;
+      }
     }
 
     return null;
@@ -1329,6 +1401,7 @@ if (!$thumb) {
         return variations[i];
       }
     }
+
     return null;
   }
 
@@ -1341,6 +1414,7 @@ if (!$thumb) {
         return true;
       }
     }
+
     return false;
   }
 
@@ -1348,6 +1422,7 @@ if (!$thumb) {
     input.disabled = !enabled;
 
     var label = input.closest('.info-product-radio-item, .info-product-swatch');
+
     if (label) {
       label.classList.toggle('is-disabled', !enabled);
       label.setAttribute('aria-disabled', enabled ? 'false' : 'true');
@@ -1374,17 +1449,24 @@ if (!$thumb) {
       changed = false;
 
       var selected = getSelected();
+
       refreshOptionStates(selected);
 
       hiddenAttrInputs.forEach(function(h){
         var attrName = h.name;
         var radios = radiosByName(attrName);
+
         if (!radios.length) return;
 
-        var checkedValid = radios.some(function(r){ return r.checked && !r.disabled; });
+        var checkedValid = radios.some(function(r){
+          return r.checked && !r.disabled;
+        });
 
         if (!checkedValid) {
-          var firstEnabled = radios.find(function(r){ return !r.disabled; });
+          var firstEnabled = radios.find(function(r){
+            return !r.disabled;
+          });
+
           if (firstEnabled) {
             firstEnabled.checked = true;
             changed = true;
@@ -1396,29 +1478,51 @@ if (!$thumb) {
     } while (changed && guard < 10);
 
     var finalSelected = getSelected();
+
     refreshOptionStates(finalSelected);
+
     return finalSelected;
+  }
+
+  function setHiddenAttributes(selected, exactVariation){
+    hiddenAttrInputs.forEach(function(inp){
+      var val = selected[inp.name] || '';
+
+      // Clave: si encontramos una variación exacta,
+      // mandamos a Woo el valor EXACTO que tiene esa variación.
+      // Esto arregla diferencias tipo Full/full, acentos, slugs, etc.
+      if (exactVariation && exactVariation.attributes) {
+        var exactVal = getVariationAttrValue(exactVariation, inp.name);
+
+        if (typeof exactVal !== 'undefined' && String(exactVal || '') !== '') {
+          val = exactVal;
+        }
+      }
+
+      inp.value = val;
+    });
   }
 
   function applyVariationToInputs(variation){
     if (!variation || !variation.attributes) return;
 
-    var attrs = variation.attributes;
-
     hiddenAttrInputs.forEach(function(h){
       var attrName = h.name;
-      var value = (typeof attrs[attrName] !== 'undefined') ? String(attrs[attrName] || '') : '';
+      var value = getVariationAttrValue(variation, attrName);
 
-      if (!value) return;
+      if (typeof value === 'undefined' || String(value || '') === '') {
+        return;
+      }
 
       var radios = radiosByName(attrName);
+
       if (!radios.length) {
         h.value = value;
         return;
       }
 
       radios.forEach(function(r){
-        r.checked = (String(r.value) === value);
+        r.checked = valuesEqual(r.value, value);
       });
     });
   }
@@ -1431,18 +1535,27 @@ if (!$thumb) {
 
     if (v && typeof v.min_qty !== 'undefined' && v.min_qty !== null) {
       var m1 = parseInt(v.min_qty, 10);
-      if (isFinite(m1) && m1 > 0) min = m1;
+
+      if (isFinite(m1) && m1 > 0) {
+        min = m1;
+      }
     }
 
     if (v && typeof v.max_qty !== 'undefined' && v.max_qty !== null && v.max_qty !== '') {
       var m2 = parseInt(v.max_qty, 10);
-      if (isFinite(m2) && m2 > 0) max = String(m2);
+
+      if (isFinite(m2) && m2 > 0) {
+        max = String(m2);
+      }
     }
 
     qtyInput.min = String(min);
 
-    if (max === '') qtyInput.removeAttribute('max');
-    else qtyInput.max = max;
+    if (max === '') {
+      qtyInput.removeAttribute('max');
+    } else {
+      qtyInput.max = max;
+    }
 
     if (parseInt(qtyInput.value || '1', 10) < min) {
       qtyInput.value = String(min);
@@ -1451,6 +1564,7 @@ if (!$thumb) {
 
   function setPrice(v){
     if (!priceEl || !v || !v.price_html) return;
+
     priceEl.innerHTML = v.price_html;
   }
 
@@ -1464,7 +1578,6 @@ if (!$thumb) {
     }
 
     if (!v) {
-      // NO mostramos más el mensaje de combinación inválida
       addBtn.disabled = true;
       setMsg('');
       return;
@@ -1482,25 +1595,23 @@ if (!$thumb) {
 
   function sync(){
     var selected = ensureValidSelections();
-    setHiddenAttributes(selected);
 
     var exact = allChosen(selected) ? exactMatchVariation(selected) : null;
 
-    // fallback defensivo:
-    // si por algún motivo la selección actual no tiene match exacto,
-    // saltamos a la primera variación compatible real
     if (!exact) {
       var fallback = findFirstCompatibleVariation(selected);
+
       if (fallback) {
         applyVariationToInputs(fallback);
         selected = ensureValidSelections();
-        setHiddenAttributes(selected);
         exact = exactMatchVariation(selected) || fallback;
       }
     }
 
+    setHiddenAttributes(selected, exact);
+
     if (varIdEl) {
-      varIdEl.value = (exact && exact.variation_id) ? String(exact.variation_id) : '';
+      varIdEl.value = exact && exact.variation_id ? String(exact.variation_id) : '';
     }
 
     if (exact) {

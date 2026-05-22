@@ -348,6 +348,8 @@ if ( function_exists('wc_load_cart') ) {
 
             </div>
           </div>
+          <div class="legend-text"><p>En Na Lakalú, cada pieza es elaborada bajo procesos cuidadosamente supervisados para garantizar la calidad y los acabados que distinguen a nuestra marca. Nuestros tiempo de entrega es de 30 a 45 días hábiles. Una de nuestras asesoras se comunicará con usted para coordinar los detalles de su pedido y brindarle el acompañamiento necesario durante el proceso.
+</p></div>
 
         </aside>
 
@@ -517,7 +519,17 @@ if ( function_exists('wc_load_cart') ) {
           });
         }
 
-        $(document).on('change', 'input[name^="shipping_method"], select.shipping_method', updateShippingAjax);
+        // Evita que WooCommerce ejecute su refresh nativo de .cart_totals
+document.addEventListener('change', function(e){
+  const field = e.target.closest('.nlk-totals__shipping-box input[name^="shipping_method"], .nlk-totals__shipping-box select.shipping_method');
+  if (!field) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  updateShippingAjax();
+}, true);
 
         // 4) Shipping calculator submit => AJAX
         $(document).on('submit', 'form.woocommerce-shipping-calculator', function(e){

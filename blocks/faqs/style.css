@@ -162,20 +162,20 @@ font-weight: 400;
   }
   .nlk-faqs__title {
     margin-bottom: 20px;
-    font-size:2rem;
+    font-size:2.5rem;
   }
 
   .nlk-faqs__question {
-    padding: 1rem;
+    padding: 2rem 1rem;
   }
 
   .nlk-faqs__question-text {
-    font-size: 1rem;
+    font-size: 1.5rem;
   }
 
   .nlk-faqs__answer-content {
   padding: 0.5rem 1rem 2rem;
-    font-size: 0.9rem;
+    font-size: 1.5rem;
   }
 
   .nlk-faqs__bg {

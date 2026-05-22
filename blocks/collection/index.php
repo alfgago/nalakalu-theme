@@ -249,13 +249,14 @@ if ( ! empty($last_img) ) {
 ?>
 
     <div class="collection-row-2 collection-product has-dynamic-bg" <?php echo $style_attr ? 'style="' . esc_attr($style_attr) . '"' : ''; ?>>
+      <a href="/coleccion/">
       <div class="product-badge">
         <svg class="text-image" xmlns="http://www.w3.org/2000/svg" width="164" height="161" fill="none" viewBox="0 0 164 161"><path fill="#fff" d="m55.6 4.8 8.2-2.3.4 1.5-6.5 1.9 1.2 4.4 6.5-1.8.4 1.5-6.4 1.8 1.2 4.5 6.7-1.9.4 1.5-8.2 2.4zm20.3 0 1.8-.2-2.4 5v.3l3.7 4.5-1.8.2-3.2-4h-.3l-2.2 4.7-1.8.2 2.6-5.3V10l-3.5-4.4 1.8-.2 3 3.8h.3zM82 18.4h-1.6l.7-14 1.5.1v1.6h.2q.4-.9 1.5-1.3 1-.4 2-.4A5 5 0 0 1 89.5 6q.6.7 1 1.6.3 1 .2 2.2v.4l-.5 2.1a4 4 0 0 1-2.5 2.5 5 5 0 0 1-2.8 0l-1-.3-.7-.6-.6-.9h-.3zm3.5-5q.8 0 1.3-.2a3 3 0 0 0 1.9-1.7L89 10v-.4a4 4 0 0 0-.8-2.6l-1-.8a3 3 0 0 0-2.6-.1 3 3 0 0 0-1.9 1.8l-.3 1.5v.2q0 .8.2 1.5.1.7.6 1.2a3 3 0 0 0 2.3 1m6.8.3 3.5.7 2.3-10.9-3.4-.7.3-1.4 5 1-2.6 12.3 3.5.8-.3 1.4-8.6-1.8zm21 2.8q-.5 1.1-1.2 1.9t-1.6 1-1.9.4a5 5 0 0 1-4.6-2.9q-.4-.9-.4-1.9-.1-1 .4-2.2v-.2l1.2-1.9 1.7-1q.8-.4 1.8-.4a5 5 0 0 1 3.5 1.4q.8.6 1.1 1.5t.4 1.9q0 1-.3 2.1zm-6 1.5q.7.3 1.3.3t1.3-.3 1-.8q.6-.6.9-1.3v-.2q.4-.7.4-1.5T112 13l-.7-1.1a3 3 0 0 0-2.5-1 3 3 0 0 0-2.4 1.1l-.7 1.3-.1.2-.3 1.5a4 4 0 0 0 1 2.4q.5.5 1.1.7m10.3-5 3.1 1.8-.7 1.1.2.2q.7-.6 1.6-.5.7 0 1.6.5 1.2.8 1.5 2 .3 1.5-.6 3l-1.5-.6q.6-1.2.4-2-.2-1-1-1.4-.6-.3-1.1-.4-.5 0-1 .2l-.9.6-.7 1-2.1 3.6 2.1 1.3-.7 1.2-5.5-3.2.8-1.3 2 1.2 3.5-6-1.7-1.1zm11.4 18-.2-.2q-1 .5-2 .3t-1.6-.8L124 29q-.4-.8-.5-1.7t.3-1.9a6 6 0 0 1 1.1-1.9l.2-.2a6 6 0 0 1 1.7-1.4q.9-.6 1.8-.6t1.7.2q.9.3 1.6.9t1.1 1.5.1 1.9l.2.2 1-1.2 1.2 1-5 6q-.5.5 0 .8l.4.3-1 1.1-.8-.7q-.5-.4-.5-1-.1-.6.4-1.1zm-2.7-1.7a3 3 0 0 0 2.4.7q.6 0 1.2-.5.6-.3 1.2-1l.1-.1q.6-.6.8-1.3l.2-1.3q0-.7-.3-1.3-.2-.5-.8-1a3 3 0 0 0-2.4-.7q-.6 0-1.2.5-.6.3-1.2 1l-.2.2q-1 1.2-1 2.6a3 3 0 0 0 1.2 2.2m12.3 15.5-.8-1.4 8.5-5.1.8 1.3-1.4.9.1.2q2.2-.3 3.3 1.7 1 1.5.5 3-.3 1.3-2.2 2.5l-5 3-.8-1.3 4.8-3q1.3-.7 1.6-1.7.2-1-.3-2a3 3 0 0 0-2-1.5q-1.2-.1-2.6.7zm16.7 11 .5 1.5-9.2 3.7-.5-1.4 1.6-.7v-.2a4 4 0 0 1-2-.6q-.7-.6-1.2-1.7l-.3-1.5q0-.8.3-1.4l1-1.2 1.6-1 5.5-2.1.6 1.4-5.4 2.2q-1.4.5-1.8 1.4t0 2.1q.6 1.3 1.8 1.7a4 4 0 0 0 2.7-.2zm-3.3 7.7q-1.5.3-2.2 1.4-.6 1-.3 2.5 0 .8.4 1.2a3 3 0 0 0 1.4 1.2l.8.2v1.5q-1.5 0-2.6-1a5 5 0 0 1-1.5-2.8v-2a5 5 0 0 1 2-3q1-.6 2-.8l.5-.1q1-.3 2-.1a5 5 0 0 1 3 2q.5.7.8 1.8t0 2.1a4 4 0 0 1-2 2.8l-1.4.6-1.2.3zm4.8 2.3a4 4 0 0 0-1.2-2l-1-.5-1.2-.1 1.4 6.3 1-.6q.5-.4.7-.9l.4-1zm.2 10q-.7 0-1 .7t-.4 2.3-.7 2.6-2 1h-.1a3 3 0 0 1-2.3-.9q-.4-.5-.7-1.2t-.3-1.6q0-1 .2-2l.7-1.4A4 4 0 0 1 153 74l.4 1.5q-1.2 0-1.8 1a3 3 0 0 0-.6 2q0 1.2.6 1.8.4.6 1.2.6.9 0 1.2-.7t.3-2.2q0-1.7.7-2.6t1.9-1h.1q.7-.1 1.3.2.5.2.9.7t.6 1.1l.3 1.4q0 1-.2 1.7-.3.8-.7 1.3t-1 .8l-1 .4-.4-1.5q.8 0 1.4-.8.5-.7.5-1.8l-.5-1.5-.5-.4zm2.8 10.2-.3 3 4 .5-.1 1.6-4-.5-.5 3.9-1.4-.2.4-3.8-6.4-.7q-.6 0-.6.5l-.3 2.8-1.5-.2.4-3.3q0-.7.5-1.1t1.2-.3l6.9.7.3-3zm-1.5 12.4-1 3.4-1.2-.3-.1.2q.6.5.9 1.4v1.6q-.6 1.5-1.7 2-1.2.8-3 .3l.2-1.7q1.3.4 2.1 0 .8-.6 1-1.5.2-.6 0-1 0-.6-.4-1-.2-.3-.8-.7l-1.1-.4-4-1.1-.7 2.4-1.4-.4 1.7-6.1 1.4.4-.6 2.2 6.8 1.8.5-2zM144 114l.1-.2q-.7-.9-.8-1.9t.4-1.8l1-1.5 1.5-1 1.9-.2a6 6 0 0 1 2.1.6l.3.2 1.8 1.2q.7.7 1 1.6.4.8.3 1.7 0 .9-.4 1.8t-1.2 1.5a3 3 0 0 1-1.8.6l-.1.2 1.4.7-.7 1.4-7.1-3.4q-.5-.1-.8.3l-.2.4-1.3-.6.4-1q.3-.5 1-.8.5-.1 1.1.1zm1-3.1a3 3 0 0 0-.1 2.5q.2.6.7 1l1.3 1h.2q.8.3 1.4.4l1.4-.1q.6-.2 1-.6.6-.4.8-1a3 3 0 0 0 .1-2.6l-.7-1q-.6-.5-1.3-.9l-.2-.1q-1.6-.7-2.8-.3a3 3 0 0 0-1.9 1.7m.6 11.7q-.6-.5-1.3-.2-.6.3-1.6 1.6-1.2 1.4-2.2 1.7t-2.2-.4a3 3 0 0 1-1.3-2.2q0-.6.2-1.4t.7-1.4l1.4-1.5 1.4-.7a4 4 0 0 1 2.7.5l-.5 1.4q-1-.6-2-.3a3 3 0 0 0-1.8 1.3q-.6 1-.6 1.7 0 .9.6 1.3.8.4 1.4.1.7-.3 1.6-1.5a5 5 0 0 1 2.1-1.7q1-.5 2.2.3l.9 1 .3 1.2q0 .6-.2 1.3l-.6 1.2q-.6.8-1.2 1.2-.7.5-1.3.7H143q-.7 0-1.2-.3l.6-1.4q.7.4 1.6.2.8-.3 1.5-1.2l.5-1.4v-.7zm-20.3 12 1.2-1 6 8-1.3.9-1-1.4-.2.2q.5 2.1-1.4 3.5-1.3 1-2.8.8t-2.7-2l-3.6-4.7 1.2-1 3.4 4.5q1 1.3 2 1.5t2-.6q1-.8 1.2-2 0-1.5-1-2.6zm-9.4 17.6-1.4.7-4.6-8.7 1.4-.8.8 1.6h.2q0-1.2.4-2t1.5-1.4l1.5-.5q.8 0 1.4.2.7.2 1.3.8t1.1 1.5l2.8 5.3-1.4.7-2.7-5q-.7-1.5-1.6-1.8t-2 .3q-1.4.6-1.6 1.9a4 4 0 0 0 .5 2.6zm-8-2.5q-.5-1.4-1.5-2-1.1-.5-2.6 0-.6.1-1.1.5a3 3 0 0 0-1.2 2.3l-1.5.1q0-1.5.8-2.6t2.6-1.8q1-.3 2-.2a5 5 0 0 1 3.2 1.7q.6.8 1 1.9l.1.4q.3 1 .3 2t-.5 1.8-1.2 1.4l-1.7 1q-1.2.4-2.1.2a4 4 0 0 1-3-1.7q-.5-.6-.7-1.3l-.4-1.2zm-1.7 5a4 4 0 0 0 1.8-1.4l.4-1v-1.2l-6 2q0 .6.6 1 .4.5 1 .6.4.2 1 .2zm-15-5.4 3.1-.5 5 9.3-1.9.3-4.4-8.6h-.2l-1.6 9.5-1.8.3zM79 151.6h.2q.5-1 1.4-1.4.8-.5 1.8-.5l1.8.3 1.5 1 1 1.6q.3 1 .3 2.2v.3a6 6 0 0 1-.4 2.2q-.3.9-1 1.6-.7.6-1.5 1-.7.3-1.8.3-.9 0-1.8-.5a3 3 0 0 1-1.3-1.4h-.2v1.6h-1.6v-8q0-.5-.5-.5h-.5v-1.5h1q.8 0 1.2.5t.4 1.1zm3.2-.4a3 3 0 0 0-2.3 1l-.7 1.1-.2 1.5v.2q0 .8.2 1.5l.7 1.2 1 .7q.6.3 1.3.3a3 3 0 0 0 2.3-1q.4-.5.6-1.1l.3-1.5v-.3q0-1.7-.9-2.7a3 3 0 0 0-2.3-1m-10.3 5.5q.1-.8-.4-1.2t-2.2-.9-2.4-1.3-.6-2v-.2a3 3 0 0 1 1.5-2q.6-.4 1.3-.4t1.6 0l2 .6 1.1 1a4 4 0 0 1 .8 2.7l-1.6.1q.2-1-.5-2a3 3 0 0 0-2-1q-1 0-1.8.2t-.8 1q-.2.9.4 1.3t2 .9a5 5 0 0 1 2.5 1.2q.8.8.6 2v.2l-.5 1.2-1 .7-1.2.4h-1.4q-1-.3-1.6-.7t-1.1-.9q-.4-.5-.6-1l-.2-1.2 1.6-.1q-.1 1 .5 1.6t1.6.8h1.5l.6-.5zm-27.9-14.2a5 5 0 0 1 2.7-1.6q.7-.2 1.6 0 .9 0 1.7.6.9.5 1.6 1.2l1 1.6a5 5 0 0 1-.5 4l-.1.3q-.6 1-1.4 1.7a5 5 0 0 1-3.7 1 6 6 0 0 1-3.3-1.7q-.6-.6-.8-1.4l-.3-1.5q0-.8.2-1.6l1.5.4-.2 1q0 .7.2 1 0 .7.5 1l1 .9a3 3 0 0 0 2.7.2 4 4 0 0 0 2.2-1.8v-.2l.6-1.5a3 3 0 0 0-.8-2.5 4 4 0 0 0-2.3-1.3l-1.1.1-1 .5-.8.7zm-10.1-6q.7-.9 1.7-1.5l1.8-.6q.9 0 1.9.2a5 5 0 0 1 3.6 4l-.1 2q-.3 1-1 2l-.2.2q-.7.9-1.6 1.5a4.8 4.8 0 0 1-3.7.4 5 5 0 0 1-3.7-4l.1-2q.3-1 1-2zm6.1.2q-.5-.5-1.1-.6-.8-.3-1.4-.1-.6 0-1.2.4l-1.2 1-.1.3-.7 1.3q-.2.8-.1 1.3 0 .7.4 1.3a3 3 0 0 0 2 1.6 3 3 0 0 0 2.6-.4l1.1-1 .2-.2q.5-.6.7-1.3t.1-1.4l-.3-1.2zm-5.4-4.2-2.5-2.7-8.1 7.6 2.3 2.5-1 1-3.5-3.7 9.3-8.5-2.5-2.7 1-1 6 6.5zm-10.7-7.8q1.2-.8 1.4-2 .3-1.3-.5-2.5l-.8-1a3 3 0 0 0-2.6-.5l-.5-1.4q1.3-.4 2.7 0t2.4 2q.6 1 .8 2a5 5 0 0 1-.8 3.5q-.6.8-1.6 1.4l-.4.3q-.9.5-1.8.8a5 5 0 0 1-3.5-.8l-1.4-1.4q-.7-1-.8-2a4 4 0 0 1 .8-3.3l1-1 1.1-.7zm-5.4-.4a4 4 0 0 0 1.9 1.4q.5.2 1.1.1.6 0 1.1-.3l-3.5-5.3q-.5.3-.8.9-.3.5-.3 1v1.2zM15.2 107a5 5 0 0 1 3.1.2l1.3 1q.6.7 1 1.5.4 1 .5 2t-.3 1.8a5 5 0 0 1-2.8 3h-.2q-1 .6-2.1.6a5 5 0 0 1-3.6-1.4 6 6 0 0 1-1.5-3.4q-.1-.9.1-1.6t.7-1.4 1.2-1.1l1 1.2-.9.7-.5 1-.2 1q0 .7.4 1.3a3 3 0 0 0 2 1.8 4 4 0 0 0 2.8-.1h.2q.8-.4 1.3-1a3 3 0 0 0 .9-2.4 4 4 0 0 0-1.1-2.5l-1-.6-1-.2-1 .1zM12 95.6a5 5 0 0 1 3 .8q.6.5 1.1 1.2l.8 1.6q.2 1 .1 2 0 1-.5 1.9a5 5 0 0 1-3.3 2.4h-.2q-1.2.3-2.2.2a5 5 0 0 1-3.2-2 6 6 0 0 1-1-3.6q0-.7.4-1.5.3-.8.9-1.3t1.3-.9l.7 1.4-.8.6q-.5.3-.7.8l-.4 1q0 .6.2 1.4a3 3 0 0 0 1.6 2 4 4 0 0 0 2.8.4h.2l1.4-.7a3 3 0 0 0 1.3-2.3 4 4 0 0 0-.6-2.6l-.8-.7q-.5-.4-1-.4h-1zM2 91.1q-.6 0-1-.3-.5-.4-.5-1t.3-1 1-.5 1 .3.5 1-.3 1-1 .5m11.7 1.8-.4-3.5-7 .6.3 3.1-1.4.2-.5-4.7 8.5-.8-.3-3.2 1.4-.1.8 8.2zm-3.6-20.7q1.2 0 2.1.6T14 74t.8 1.7a5 5 0 0 1-1.3 5.2q-.7.7-1.7 1t-2.2.3h-.2Q8 82 7 81.6l-1.5-1.2q-.6-.7-.9-1.7a5 5 0 0 1 1.4-5.2q.6-.7 1.7-1 .9-.3 2.1-.3zm3.3 5.3q0-.8-.2-1.4t-.6-1.1l-1.1-.8-1.5-.4h-.3q-.8 0-1.4.2-.8.1-1.3.6l-.8 1a3 3 0 0 0-.1 2.7 3 3 0 0 0 1.7 1.9l1.5.4h.2q.8 0 1.5-.2.8-.1 1.2-.6.5-.4.8-1zM1 74.2 3.3 76v1.4L1 76zm14.6-4.8-.4 1.5-9.6-2.3.3-1.5 1.6.4.1-.3Q6.1 66 6.5 63.7 7 62 8.2 61.2q1.3-.7 3.4-.2l5.7 1.3L17 64l-5.5-1.3q-1.5-.4-2.4.1t-1.2 1.7q-.3 1.4.4 2.4.8 1 2.3 1.4zm-1.4-12q1.5.4 2.6 0t1.8-1.8l.3-1.2a3 3 0 0 0-.4-1.8L18 52l.9-1.3q1 1 1.5 2.4.3 1.4-.4 3-.4 1-1 1.8a5 5 0 0 1-3.5 1.2q-1 0-2-.4l-.5-.2-1.7-1A5 5 0 0 1 10 54q-.1-1 .4-1.9.4-1 1.2-1.8a4 4 0 0 1 3.2-1.1q.8 0 1.5.3l1.1.5zm-2.6-4.7a4 4 0 0 0-.1 2.3l.5 1 1 .8 2.4-6h-1.2q-.6 0-1 .2l-1 .7zm5.6-8.3q.7.3 1.3 0t1.6-1.6a5 5 0 0 1 2.1-1.8q1.1-.5 2.2.3h.1a3 3 0 0 1 1.3 2.2l-.1 1.4-.7 1.4-1.3 1.6-1.4.7a4 4 0 0 1-2.7-.4l.5-1.4q1 .5 2 .2a3 3 0 0 0 1.7-1.4q.6-1 .6-1.7 0-.8-.7-1.2-.8-.4-1.4 0-.7.3-1.5 1.5a5 5 0 0 1-2 1.8q-1.2.5-2.3-.3-.6-.4-1-1l-.3-1.1q0-.6.2-1.3l.5-1.2q.6-.9 1.2-1.3t1.2-.7 1.3-.1q.6 0 1.1.3l-.5 1.4q-.8-.4-1.6-.1t-1.4 1.2l-.5 1.4.1.7z"/></svg>
         <div class="badge-arrow">
           <img class="arrow_badge" src="https://nalakalu.stag.host/wp-content/uploads/2025/10/naka_arrow.svg" alt="">
         </div>
       </div>
-
+</a>
       <div class="product-details">
         <div class="product-meta">
           <span class="font-body-small"><?php echo esc_html($last_category_name); ?></span>
@@ -403,8 +404,17 @@ if ( ! empty($last_img) ) {
 
     var index = 0;
     var mql = window.matchMedia('(max-width: 768px)');
+    var scrollTimer = null;
+
+    function isMobile() {
+      return mql.matches;
+    }
 
     function getViewportWidth() {
+      if (isMobile()) {
+        return wrapper.getBoundingClientRect().width;
+      }
+
       return carousel.getBoundingClientRect().width;
     }
 
@@ -422,11 +432,22 @@ if ( ! empty($last_img) ) {
     }
 
     function getMaxScroll() {
-      var max = wrapper.scrollWidth - getViewportWidth();
-      return max > 0 ? max : 0;
+      var viewport = getViewportWidth();
+
+      if (isMobile()) {
+        var maxMobile = wrapper.scrollWidth - viewport;
+        return maxMobile > 0 ? maxMobile : 0;
+      }
+
+      var maxDesktop = wrapper.scrollWidth - viewport;
+      return maxDesktop > 0 ? maxDesktop : 0;
     }
 
     function getMaxIndex() {
+      if (isMobile()) {
+        return Math.max(0, items.length - 1);
+      }
+
       var step = getStep();
       var maxScroll = getMaxScroll();
 
@@ -450,6 +471,38 @@ if ( ! empty($last_img) ) {
       }
 
       return -x;
+    }
+
+    function getScrollLeftForIndex(value) {
+      value = clampIndex(value);
+
+      if (!items[value]) return 0;
+
+      var firstOffset = items[0].offsetLeft;
+      var itemOffset = items[value].offsetLeft;
+
+      return itemOffset - firstOffset;
+    }
+
+    function getIndexFromScroll() {
+      if (!isMobile()) return index;
+
+      var currentLeft = wrapper.scrollLeft;
+      var closestIndex = 0;
+      var closestDistance = Infinity;
+      var firstOffset = items[0] ? items[0].offsetLeft : 0;
+
+      items.forEach(function (item, itemIndex) {
+        var targetLeft = item.offsetLeft - firstOffset;
+        var distance = Math.abs(currentLeft - targetLeft);
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = itemIndex;
+        }
+      });
+
+      return clampIndex(closestIndex);
     }
 
     function updateButtons() {
@@ -485,7 +538,7 @@ if ( ! empty($last_img) ) {
 
       var max = getMaxIndex();
 
-      if (!mql.matches || max <= 0) {
+      if (!isMobile() || max <= 0) {
         dotsWrap.hidden = true;
         return;
       }
@@ -496,6 +549,12 @@ if ( ! empty($last_img) ) {
         dot.className = 'carousel-dot';
         dot.dataset.index = String(i);
         dot.setAttribute('aria-label', 'Ir al slide ' + (i + 1));
+        dot.setAttribute('aria-selected', i === index ? 'true' : 'false');
+
+        if (i === index) {
+          dot.classList.add('is-active');
+        }
+
         dotsWrap.appendChild(dot);
       }
 
@@ -505,11 +564,23 @@ if ( ! empty($last_img) ) {
     function goTo(nextIndex, animate) {
       index = clampIndex(nextIndex);
 
-      wrapper.style.transition = animate
-        ? 'transform .35s cubic-bezier(.22,.61,.36,1)'
-        : 'none';
+      if (isMobile()) {
+        wrapper.style.transform = 'none';
+        wrapper.style.transition = 'none';
 
-      wrapper.style.transform = 'translateX(' + getTranslateForIndex(index) + 'px)';
+        wrapper.scrollTo({
+          left: getScrollLeftForIndex(index),
+          behavior: animate ? 'smooth' : 'auto'
+        });
+      } else {
+        wrapper.style.overflowX = '';
+        wrapper.style.scrollSnapType = '';
+        wrapper.style.transition = animate
+          ? 'transform .35s cubic-bezier(.22,.61,.36,1)'
+          : 'none';
+
+        wrapper.style.transform = 'translateX(' + getTranslateForIndex(index) + 'px)';
+      }
 
       updateButtons();
       updateDots();
@@ -517,6 +588,12 @@ if ( ! empty($last_img) ) {
 
     function refresh() {
       index = clampIndex(index);
+
+      if (isMobile()) {
+        wrapper.style.transform = 'none';
+        wrapper.style.transition = 'none';
+      }
+
       buildDots();
       goTo(index, false);
     }
@@ -547,6 +624,18 @@ if ( ! empty($last_img) ) {
       });
     }
 
+    wrapper.addEventListener('scroll', function () {
+      if (!isMobile()) return;
+
+      clearTimeout(scrollTimer);
+
+      scrollTimer = setTimeout(function () {
+        index = getIndexFromScroll();
+        updateButtons();
+        updateDots();
+      }, 80);
+    }, { passive: true });
+
     wrapper.querySelectorAll('img').forEach(function (img) {
       img.setAttribute('draggable', 'false');
 
@@ -555,7 +644,9 @@ if ( ! empty($last_img) ) {
       }
     });
 
-    window.addEventListener('resize', refresh);
+    window.addEventListener('resize', function () {
+      setTimeout(refresh, 120);
+    });
 
     if (mql.addEventListener) {
       mql.addEventListener('change', refresh);

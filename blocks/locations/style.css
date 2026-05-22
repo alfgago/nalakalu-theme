@@ -41,7 +41,7 @@
 
 .location-card:hover .location-card__tag { background-color:white;}
 
-.location-card__overlay{  position: absolute;  inset: 0;  background: linear-gradient(to top, rgba(61,51,43,.95) 0%, rgba(61,51,43,.7) 50%, transparent 100%);  opacity: 0;  transition: opacity .4s ease;  pointer-events: none;}
+.location-card__overlay{  position: absolute;  inset: 0;  background: linear-gradient(to top, rgba(61, 51, 43, .9) 0%, rgba(61, 51, 43, .7) 20%, transparent 60%);  opacity: 0;  transition: opacity .4s ease;  pointer-events: none;}
 .location-card:hover .location-card__overlay{ opacity: 1; border-radius: 10px; }
 
 .location-card__tag {text-transform:uppercase;position: absolute;top: 25px;left: 25px;background: rgb(255 255 255 / 47%);backdrop-filter: blur(3px);padding: 9px 22px;border-radius: 25px;z-index: 2;border: 0.5px solid white;transition:.3s all;}
@@ -61,6 +61,11 @@
 
 
 @media (max-width: 768px){
+  
+  .locations__aside .font-body-medium-light{
+    margin-top:0rem;
+  }
+  
   .locations { 
     padding: 3rem 1.5rem 4rem; 
   }

@@ -90,12 +90,32 @@ if ( ! function_exists('nl_shg_img_url') ) {
   ?>
     <div class="sh_gallery_content-section sh_gallery_section-<?php echo (int) $i; ?>">
 
-      <!-- Imagen de fondo STICKY -->
-      <div class="sh_gallery_section-background"
-        <?php if ($b): ?>
-          style="background-image:url('<?php echo esc_url($b); ?>');"
-        <?php endif; ?>>
-      </div>
+     <!-- Imagen de fondo STICKY dividida en 2 partes -->
+<div class="sh_gallery_section-background" aria-hidden="true">
+
+  <div class="sh_gallery_background-part sh_gallery_background-part-blur">
+    <?php if ($b): ?>
+      <img
+        class="sh_gallery_bg-image"
+        src="<?php echo esc_url($b); ?>"
+        alt=""
+        loading="lazy"
+        decoding="async">
+    <?php endif; ?>
+  </div>
+
+  <div class="sh_gallery_background-part sh_gallery_background-part-visual">
+    <?php if ($b): ?>
+      <img
+        class="sh_gallery_bg-image"
+        src="<?php echo esc_url($b); ?>"
+        alt=""
+        loading="lazy"
+        decoding="async">
+    <?php endif; ?>
+  </div>
+
+</div>
 
       <div class="sh_gallery_content-wrapper">
         <div class="sh_gallery_content-column">

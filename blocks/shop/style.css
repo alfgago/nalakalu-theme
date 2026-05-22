@@ -303,13 +303,16 @@ font-family: var(--font-fraunces);
 }
 
 .nlk-shop__page-btn.nlk-shop__pagination-btn{
-  border-radius: 300px;
-  width: 3rem;
-  height: 3rem;
-  border: 1px solid #3D332B;
-  background: rgba(255, 255, 255, 0.80);
-  transition: .4s all;
-  cursor: pointer;
+    display: flex;
+    border-radius: 300px;
+    width: 3rem;
+    height: 3rem;
+    border: 1px solid #3D332B;
+    background: rgba(255, 255, 255, 0.80);
+    transition: .4s all;
+    cursor: pointer;
+    justify-content: center;
+    align-items: center;
 }
 
 .nlk-shop__page-btn.nlk-shop__pagination-btn:hover{ background:#E3D1BA; }

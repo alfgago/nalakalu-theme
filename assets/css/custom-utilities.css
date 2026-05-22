@@ -337,6 +337,17 @@ body {
    ======================================== */
 
 @media (max-width: 768px) {
+  
+  .btn, .btn-cafe, .btn-outline-cafe, .btn-outline-blanco{
+    padding:1.3rem;
+  }
+  
+  .font-body-medium-light{
+    font-size:1.8rem;
+    line-height:2rem;
+    text-align:justify;
+  }
+  
   .font-heading-display {
     font-size: 5.5rem;
   }
@@ -435,6 +446,7 @@ body {
   
   .font-body-medium-light {
     font-size: 18px;
+    text-align:justify;
   }
   
   .font-overline {

@@ -639,14 +639,128 @@ html, body { overflow-x: hidden; }
 .detrasde-dots{ display:none; }
 .pcarousel .recs-dots{ display:none; }
 .detrasde-discover-btn{display:none;}
+
+/* =========================
+   Variaciones: tabs + extras
+   ========================= */
+
+.info-product-var-inline-list{
+  display: grid;
+  gap: 5rem;
+  margin-top: 2.5rem;
+}
+
+.info-product-var-inline{
+  padding-top: .25rem;
+}
+
+.info-product-var-inline__title,
+.info-product-variation-title{
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #3D332B;
+}
+
+.info-product-variation-title.font-overline{
+  font-size:1.2rem;
+}
+
+.info-product-var-inline .info-product-swatch-group{
+  padding-top: 0;
+}
+
+.info-product-var-inline .info-product-swatch-group:last-child{
+  padding-bottom: 0;
+}
+
+
+/* =========================
+   Variaciones sin imagen
+   ========================= */
+
+.info-product-variation-list{
+  display: grid;
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+
+/* Pisa el margin-top viejo de .info-product-radio-list */
+.info-product-variation-list .info-product-radio-list{
+  margin-top: 0;
+}
+
+.info-product-radio-text{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-product-radio-sub{
+  display: block;
+}
+
+
+/* =========================
+   Estados deshabilitados
+   ========================= */
+
+.info-product-radio-item.is-disabled,
+.info-product-swatch.is-disabled{
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.info-product-radio-item.is-disabled *,
+.info-product-swatch.is-disabled *{
+  cursor: not-allowed;
+}
+
+
+/* =========================
+   Mobile
+   ========================= */
+
+@media (max-width: 768px){
+  .info-product-var-tabs__head{
+    gap: 24px;
+    overflow-x: auto;
+    align-items: flex-end;
+    padding-bottom: 4px;
+  }
+
+  .info-product-var-tab{
+    white-space: nowrap;
+    font-size: 1.1rem;
+  }
+
+  .info-product-swatch-row{
+    gap: 14px;
+  }
+
+  .info-product-swatch__circle{
+    width: 62px;
+    height: 62px;
+  }
+
+  .info-product-var-inline-list,
+  .info-product-variation-list{
+    margin-top: 2rem;
+  }
+}
+
 .info-product-variations{ margin-top: 18px; display: grid; gap: 14px; }
 .info-product-variation{ display:flex; flex-direction:column; gap:8px; }
 .info-product-variation-select{ height:44px; padding:0 12px; border:1px solid #B7A48D; background:#fff; }
 .info-product-variation-msg{ font-size:14px; color:#A64F1F; }
 
+.info-product-var-inline__title.font-overline{
+  font-size:1.2rem;
+}
+
 .info-product-var-tabs__head{
   display:flex;
-  gap:56px;
+  gap:20px;
   align-items:flex-end;
   margin-top: 24px;
   margin-bottom: 24px;
@@ -660,7 +774,7 @@ html, body { overflow-x: hidden; }
   cursor:pointer;
   text-transform: uppercase;
   letter-spacing: .08em;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-style: normal;
   font-weight: 400;
 }
@@ -1659,6 +1773,20 @@ font-size: 20px;
   display:none !important;
 }
 
+.legend-text{
+  margin-top:2rem;
+  font-family: var(--font-matter);
+  font-size:1.2rem;
+    border-radius: 10px;
+    background: #fff;
+    padding: 24px;
+  background:#f6f0e8;
+}
+
+.legend-text p{
+  margin:0;
+}
+
 /* ============ BOTÓN “FINALIZAR COMPRA” (mismo look que el cart) ============ */
 .woocommerce-checkout .nlk-totals__cta{
   margin-top:1rem;
@@ -1734,19 +1862,91 @@ font-size: 20px;
   list-style:none;
   font-family: var(--font-matter);
 }
+.info-product-description .font-heading-4{
+  font-size:3.25rem;
+}
+
 
 
 /* Responsive */
 @media (max-width: 1024px){
+  
+  .woocommerce-cart .nlk-shipping-methods label, .woocommerce-checkout .nlk-shipping-methods label{
+    font-size:14px;
+  }
+  
+  .woocommerce-cart .nlk-shipping-method .woocommerce-Price-amount.amount, .woocommerce-checkout .nlk-shipping-method .woocommerce-Price-amount.amount{
+    font-size:14px;
+  }
+  .nlk-totals__value{
+    font-size:15px;
+  }
+  
+  .nlk-totals__ship-price{
+    font-size:15px;
+  }
   .woocommerce-cart .nlk-cart-layout{
-    grid-template-columns: 1fr;
+    display: block;
   }
 }
 
 /* Responsive */
 @media (max-width:768px){
+  .woocommerce-cart .nlk-cart-item__price {
+font-size:17px;
+}
+  .woocommerce-cart .nlk-cart-item__top{
+    flex-direction:column;
+  }
+  .woocommerce-cart .nlk-cart-header__h{
+    font-size: 17px;
+    line-height: 25px;
+
+  }
+  
+  .nlk-totals__label{
+    font-size:15px;
+  }
+  .woocommerce-cart .nlk-btn--outline{
+    font-size:10px;
+  }
+  
+  .woocommerce-cart .nlk-card__title{
+    font-size:20px;
+  }
+  .info-product-layout {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .info-product-gallery {
+    order: 1 !important;
+    width: 100%;
+  }
+
+  .info-product-details {
+    order: 2 !important;
+    width: 100%;
+  }
+  
+  .woocommerce-cart .nlk-cart-item__thumb img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+  
+  .woocommerce-cart .nlk-cart-item{
+  display:grid;
+  grid-template-columns:none;
+  gap:18px;
+  padding:18px 0;
+  border-top:1px solid #eee;
+}
+  
   .woocommerce-cart .nlk-cart-layout{
     padding: 6rem 1rem;
+      display: block;
 }
 .info-product-swatch__circle{
   width:30px; 
@@ -1870,6 +2070,8 @@ font-size: 20px;
   margin:0 auto;
   padding:2rem;
 }
+
+
 .info-product-layout{
   grid-template-columns:1fr;
 }
@@ -1945,7 +2147,7 @@ font-size: 20px;
   
   .nl-badge-circle{display:none !important;}
   
-  .nl-breadcrumbs{padding:2rem; margin-top:1rem;}
+  .nl-breadcrumbs{padding:2rem; margin-top:5rem;}
   
   .info-product-gallery{display:flex;}
   
@@ -1960,7 +2162,7 @@ font-size: 20px;
   display:none;
 }
 
-.info-product-back{display:none;}
+.info-product-back{font-size:2rem;}
 
 .info-product-description p{
  font-family: var(--font-matter);
@@ -1969,7 +2171,6 @@ font-style: normal;
 font-weight: 400;
 line-height: normal;
 }
-
 
 
 .detrasde-header .btn{
@@ -2105,4 +2306,46 @@ line-height: normal;
 
 @media (prefers-reduced-motion: reduce){
   .pcarousel .products-wrapper{ scroll-behavior:auto; }
+}
+
+
+/* Loader solo para la caja de envíos */
+html.nlk-cart-loading .nlk-totals__shipping-box {
+  position: relative;
+  pointer-events: none;
+  overflow: hidden;
+  min-height: 90px;
+}
+
+html.nlk-cart-loading .nlk-totals__shipping-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 12px;
+}
+
+html.nlk-cart-loading .nlk-totals__shipping-box::after {
+  content: "";
+  position: absolute;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+  margin-left: -17px;
+  border-radius: 50%;
+  border: 3px solid rgba(61, 51, 43, 0.22);
+  border-top-color: #3D332B;
+  animation: nlkCartLoaderSpin .75s linear infinite;
+}
+
+@keyframes nlkCartLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }

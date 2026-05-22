@@ -52,8 +52,11 @@ $items_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
         <div class="nlk-totals__value"><?php wc_cart_totals_coupon_html( $coupon ); ?></div>
       </div>
     <?php endforeach; ?>
+    
+    
 
     <?php foreach ( WC()->cart->get_fees() as $fee ) : ?>
+    
       <div class="nlk-totals__row nlk-totals__row--fee">
         <div class="nlk-totals__label"><?php echo esc_html( $fee->name ); ?></div>
         <div class="nlk-totals__value"><?php wc_cart_totals_fee_html( $fee ); ?></div>

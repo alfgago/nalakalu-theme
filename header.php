@@ -50,8 +50,7 @@ if (!function_exists('nlk_filter_hide_thumb_items')) {
 add_filter('wp_nav_menu_objects', 'nlk_filter_hide_thumb_items', 10, 2);
 
 // ===== Enlace a “Agendar Cita” =====
-$agenda_page = get_page_by_path('agendar-cita');
-$agenda_url  = $agenda_page ? get_permalink($agenda_page) : '#';
+$agenda_url = 'https://stores.nalakalu.com/appointment';
 ?>
 
 <!-- Header fijo (barra superior) -->
@@ -68,7 +67,7 @@ $agenda_url  = $agenda_page ? get_permalink($agenda_page) : '#';
   </div>
 
   <div class="header-actions">
-    <a class="font-button text-white desktop-only" href="<?php echo esc_url($agenda_url); ?>"><?php _e('AGENDAR CITA', 'nalakalu'); ?></a>
+    <a target="_blank" class="font-button text-white desktop-only" href="<?php echo esc_url($agenda_url); ?>"><?php _e('AGENDAR CITA', 'nalakalu'); ?></a>
 
     <!-- Lupa -->
     <button class="icon-btn desktop-only nlk-search-trigger" type="button"
@@ -134,7 +133,7 @@ $agenda_url  = $agenda_page ? get_permalink($agenda_page) : '#';
         </div>
   
         <div class="header-actions-cafe">
-          <a class="text-cafe font-button menu-agendar mobile-agendar" href="<?php echo esc_url($agenda_url); ?>">
+          <a target="_blank" class="text-cafe font-button menu-agendar mobile-agendar" href="<?php echo esc_url($agenda_url); ?>">
             <?php _e('AGENDAR CITA', 'nalakalu'); ?>
           </a>
 
@@ -257,7 +256,7 @@ $agenda_url  = $agenda_page ? get_permalink($agenda_page) : '#';
         </div>
 
         <div class="menu-footer-cta">
-          <a class="text-cafe font-button menu-agendar mobile-only" href="<?php echo esc_url($agenda_url); ?>">
+          <a target="_blank" class="text-cafe font-button menu-agendar mobile-only" href="<?php echo esc_url($agenda_url); ?>">
             <?php _e('AGENDAR CITA', 'nalakalu'); ?>
           </a>
         </div>
@@ -478,5 +477,78 @@ $agenda_url  = $agenda_page ? get_permalink($agenda_page) : '#';
 
   // estado inicial
   renderEmpty();
+})();
+</script>
+
+<script>
+(function(){
+  function isMobile(){
+    return window.matchMedia('(max-width: 768px)').matches;
+  }
+
+  function closeNlkMenu(){
+    var menuBtn = document.getElementById('nlkMenuBtn');
+    var overlay = document.getElementById('nlkMenuOverlay');
+
+    document.body.classList.remove('menu-open');
+
+    if (menuBtn) {
+      menuBtn.classList.remove('active');
+      menuBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    if (overlay) {
+      overlay.classList.remove('active');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function isSostenibilidadLink(link){
+    if (!link || !link.href) return false;
+
+    try {
+      var url = new URL(link.href, window.location.origin);
+      return url.hash === '#sostenibilidad';
+    } catch(e) {
+      return false;
+    }
+  }
+
+  document.addEventListener('click', function(e){
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    if (!isMobile()) return;
+    if (!isSostenibilidadLink(link)) return;
+
+    var target = document.getElementById('sostenibilidad');
+
+    /*
+      Si estamos en la misma página y existe el anchor,
+      cerramos el menú y hacemos scroll manual.
+    */
+    if (target && window.location.pathname === '/') {
+      e.preventDefault();
+
+      closeNlkMenu();
+
+      setTimeout(function(){
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+
+        history.pushState(null, '', '#sostenibilidad');
+      }, 250);
+
+      return;
+    }
+
+    /*
+      Si no estamos en home, dejamos que navegue normal,
+      pero cerramos visualmente el menú antes.
+    */
+    closeNlkMenu();
+
+  }, true);
 })();
 </script>

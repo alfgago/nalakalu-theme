@@ -86,8 +86,12 @@ if ( ! $show_image ) {
               Año
             </span>
           <?php endif; ?>
+          
         </div>
+        
       <?php endif; ?>
+      
+      
 
       <?php if ( $title ): ?>
         <h1 class="nl_nextlaunch_title font-heading-1">
@@ -108,6 +112,20 @@ if ( ! $show_image ) {
           Asigná el campo “description”.
         </div>
       <?php endif; ?>
+      
+      <div class="newsletter-form-collection">
+
+  <form class="form-group" action="#" method="post">
+    <input 
+      type="email" 
+      name="email"
+      placeholder="<?php echo esc_attr( get_theme_mod('nlk_news_placeholder', 'Correo Electrónico') ); ?>" 
+      required
+    >
+
+    <button type="submit">Enviar</button>
+  </form>
+</div>
 
       <?php if ( $url_button ): ?>
         <a href="<?php echo esc_url($url_button); ?>" class="btn btn-cafe">

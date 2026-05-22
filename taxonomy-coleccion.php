@@ -1,7 +1,3 @@
-<?php if ( current_user_can('manage_options') ) : ?>
-  <!-- DEBUG: ESTAS EN taxonomy-coleccion.php -->
-<?php endif; ?>
-
 
 <?php
 /**
@@ -15,18 +11,26 @@ get_header();
 // ========= Datos del término actual =========
 $term = get_queried_object();
 if ( ! $term || is_wp_error( $term ) ) {
-    $term_name = '';
-    $bg_field  = null;
+    $term_name  = '';
+    $bg_field   = null;
+    $logo_field = null;
 } else {
     $term_name = $term->name;
+
     // Campo ACF en la taxonomía: background_image
-    $bg_field  = get_field( 'background_image', $term );
-    // Fallback por si ACF lo guarda como "coleccion_{id}"
+    $bg_field = get_field( 'background_image', $term );
+
     if ( ! $bg_field ) {
         $bg_field = get_field( 'background_image', $term->taxonomy . '_' . $term->term_id );
     }
-}
 
+    // Campo ACF en la taxonomía: logo
+    $logo_field = get_field( 'logo', $term );
+
+    if ( ! $logo_field ) {
+        $logo_field = get_field( 'logo', $term->taxonomy . '_' . $term->term_id );
+    }
+}
 // Helper para sacar URL de imagen (evitamos redeclare)
 if ( ! function_exists( 'nlk_coleccion_hero_img_url' ) ) {
     function nlk_coleccion_hero_img_url( $img, $size = 'full' ) {
@@ -52,7 +56,8 @@ if ( ! function_exists( 'nlk_coleccion_hero_img_url' ) ) {
     }
 }
 
-$bg_url = nlk_coleccion_hero_img_url( $bg_field );
+$bg_url   = nlk_coleccion_hero_img_url( $bg_field );
+$logo_url = nlk_coleccion_hero_img_url( $logo_field, 'medium' );
 
 // ID y clases del hero
 $section_id = 'coleccion-hero-' . ( $term ? $term->term_id : uniqid() );
@@ -76,431 +81,20 @@ if ( $bg_url ) {
     <div class="nl-coleccion-hero__background"<?php if ( $bg_style ) : ?> style="<?php echo esc_attr( $bg_style ); ?>"<?php endif; ?>></div>
 
     <div class="nl-coleccion-hero__content">
-      <span class="font-heading-2 text-white">Colección</span>
-
-      <?php if ( $term_name ) : ?>
-        <h1 class="font-heading-display text-blanco-hueso">
-          <?php echo esc_html( $term_name ); ?>
-        </h1>
-      <?php endif; ?>
+      <span class="nl-coleccion-hero__label font-heading-2 text-white">Colección</span>
+<?php if ( $logo_url ) : ?>
+  <img
+    class="nl-coleccion-hero__logo"
+    src="<?php echo esc_url( $logo_url ); ?>"
+    alt="<?php echo esc_attr( $term_name ); ?>"
+    loading="eager"
+    decoding="async">
+<?php endif; ?>
+      
     </div>
   </section>
   
   
-<?php
-// =============================
-// Productos de la colección
-// =============================
-$coleccion_term = get_queried_object();
-
-if ( $coleccion_term instanceof WP_Term ) {
-
-  // Traemos SOLO productos que pertenecen a esta colección
-  $nlc_args = [
-    'post_type'      => 'product',
-    'post_status'    => 'publish',
-    'posts_per_page' => -1,
-    'tax_query'      => [
-      [
-        'taxonomy' => 'coleccion',
-        'field'    => 'term_id',
-        'terms'    => $coleccion_term->term_id,
-      ],
-    ],
-    'orderby'        => 'date',
-    'order'          => 'DESC',
-  ];
-
-  $nlc_query    = new WP_Query( $nlc_args );
-  $nlc_products = [];
-  $nlc_cats_map = []; // slug => [ 'name'=>..., 'slug'=>... ]
-  $nlc_cat_ids  = []; // term_id => WP_Term
-
-  if ( $nlc_query->have_posts() ) {
-    while ( $nlc_query->have_posts() ) {
-      $nlc_query->the_post();
-      $pid   = get_the_ID();
-      $plink = get_permalink( $pid );
-      $pname = get_the_title( $pid );
-
-     // Imagen
-$thumb_id   = get_post_thumbnail_id( $pid );
-$thumb_html = '';
-
-if ( $thumb_id ) {
-  $thumb_html = wp_get_attachment_image( $thumb_id, 'medium_large', false, [
-    'class'    => 'nl-coleccion-products__img',
-    'alt'      => esc_attr( $pname ),
-    'loading'  => 'lazy',
-    'decoding' => 'async',
-    'sizes'    => '(max-width: 480px) 85vw, (max-width: 768px) 45vw, (max-width: 1200px) 33vw, 25vw',
-  ] );
-}
-
-if ( ! $thumb_html && function_exists( 'wc_placeholder_img_src' ) ) {
-  $thumb_html = '<img class="nl-coleccion-products__img" src="' . esc_url( wc_placeholder_img_src( 'medium_large' ) ) . '" alt="' . esc_attr( $pname ) . '" loading="lazy" decoding="async">';
-}
-
-      // Precio
-      $price_html = '';
-      if ( function_exists( 'wc_get_product' ) ) {
-        $product_obj = wc_get_product( $pid );
-        if ( $product_obj ) {
-          $price_html = $product_obj->get_price_html();
-        }
-      }
-
-      // Categorías de producto (product_cat) SOLO de estos productos
-      $cats      = get_the_terms( $pid, 'product_cat' );
-      $cat_slugs = [];
-
-      if ( $cats && ! is_wp_error( $cats ) ) {
-        foreach ( $cats as $c ) {
-          // ⛔️ blacklist: no sumar uncategorized / sin-categoria
-          $blacklist_slugs = [ 'uncategorized', 'sin-categoria' ];
-          if ( in_array( $c->slug, $blacklist_slugs, true ) ) {
-            continue;
-          }
-
-          $cat_slugs[] = $c->slug;
-
-          // Guardamos este término en un map global para tabs (solo categorías de esta colección)
-          if ( ! isset( $nlc_cat_ids[ $c->term_id ] ) ) {
-            $nlc_cat_ids[ $c->term_id ] = $c;
-          }
-        }
-      }
-
-$nlc_products[] = [
-  'id'         => $pid,
-  'link'       => $plink,
-  'name'       => $pname,
-  'thumb_html' => $thumb_html,
-  'price_html' => $price_html,
-  'cat_slugs'  => $cat_slugs,
-];
-    }
-    wp_reset_postdata();
-  }
-
-  // Armamos el map de categorías SOLO con las que tienen productos en esta colección
-  if ( ! empty( $nlc_cat_ids ) ) {
-    foreach ( $nlc_cat_ids as $term_id => $term_obj ) {
-      if ( $term_obj instanceof WP_Term && ! is_wp_error( $term_obj ) ) {
-
-        $blacklist_slugs = [ 'uncategorized', 'sin-categoria' ];
-        if ( in_array( $term_obj->slug, $blacklist_slugs, true ) ) {
-          continue;
-        }
-
-        $nlc_cats_map[ $term_obj->slug ] = [
-          'slug' => $term_obj->slug,
-          'name' => $term_obj->name,
-        ];
-      }
-    }
-  }
-
-  // Si no hay productos, no mostramos sección
-  if ( ! empty( $nlc_products ) ) :
-
-    // Ordenamos categorías por nombre
-    if ( ! empty( $nlc_cats_map ) ) {
-      uasort( $nlc_cats_map, function( $a, $b ) {
-        return strcasecmp( $a['name'], $b['name'] );
-      } );
-    }
-
-    $sec_id = 'nl-coleccion-products-' . $coleccion_term->term_id;
-    ?>
-    <section id="<?php echo esc_attr( $sec_id ); ?>" class="nl-coleccion-products">
-      <div class="nl-coleccion-products__inner">
-        <div class="nl-coleccion-products__header">
-          <h1 class="font-heading-2">
-            <?php esc_html_e( 'Explora la colección', 'nalakalu' ); ?>
-          </h1>
-
-          <div class="nl-coleccion-products__tabs font-overline" role="tablist" aria-label="<?php esc_attr_e( 'Categorías de productos', 'nalakalu' ); ?>">
-            <!-- Tab "Todos" -->
-            <button
-              type="button"
-              class="nl-coleccion-products__tab is-active"
-              data-cat="all"
-              role="tab"
-              aria-selected="true">
-              <?php esc_html_e( 'TODOS', 'nalakalu' ); ?>
-            </button>
-
-            <?php if ( ! empty( $nlc_cats_map ) ) : ?>
-              <?php foreach ( $nlc_cats_map as $cat ) : ?>
-                <button
-                  type="button"
-                  class="nl-coleccion-products__tab"
-                  data-cat="<?php echo esc_attr( $cat['slug'] ); ?>"
-                  role="tab"
-                  aria-selected="false">
-                  <?php echo esc_html( mb_strtoupper( $cat['name'], 'UTF-8' ) ); ?>
-                </button>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </div>
-        </div>
-
-        <div class="nl-coleccion-products__grid-wrapper">
-          <div class="nl-coleccion-products__grid">
-            <?php foreach ( $nlc_products as $index => $p ) : ?>
-              <?php
-              $data_cats = ! empty( $p['cat_slugs'] )
-                ? implode( ' ', array_map( 'sanitize_html_class', $p['cat_slugs'] ) )
-                : '';
-              ?>
-              <a
-                href="<?php echo esc_url( $p['link'] ); ?>"
-                class="nl-coleccion-products__card"
-                data-cats="<?php echo esc_attr( $data_cats ); ?>">
-                <div class="nl-coleccion-products__image">
-  <?php echo $p['thumb_html']; ?>
-</div>
-                <div class="nl-coleccion-products__info">
-                  <div class="nl-coleccion-products__details">
-                    <div class="nl-coleccion-products__name">
-                      <?php echo esc_html( $p['name'] ); ?>
-                    </div>
-                  </div>
-
-                  <?php if ( $p['price_html'] ) : ?>
-                    <div class="nl-coleccion-products__price">
-                      <?php echo wp_kses_post( $p['price_html'] ); ?>
-                    </div>
-                  <?php endif; ?>
-                </div>
-              </a>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </div>
-
-      <script>
-      (function(){
-        var root = document.getElementById('<?php echo esc_js( $sec_id ); ?>');
-        if(!root) return;
-
-        var tabs  = root.querySelectorAll('.nl-coleccion-products__tab');
-        var cards = root.querySelectorAll('.nl-coleccion-products__card');
-
-        function setActiveTab(tab){
-          tabs.forEach(function(t){
-            t.classList.remove('is-active');
-            t.setAttribute('aria-selected','false');
-          });
-          tab.classList.add('is-active');
-          tab.setAttribute('aria-selected','true');
-        }
-
-        function filterCards(catSlug){
-          cards.forEach(function(card){
-            var catsAttr = card.getAttribute('data-cats') || '';
-            var cats     = catsAttr.split(/\s+/).filter(Boolean);
-
-            var show = (catSlug === 'all');
-            if (!show && cats.length){
-              show = cats.indexOf(catSlug) !== -1;
-            }
-
-            card.style.display = show ? '' : 'none';
-          });
-        }
-
-        tabs.forEach(function(tab){
-          tab.addEventListener('click', function(){
-            var cat = tab.getAttribute('data-cat') || 'all';
-            setActiveTab(tab);
-            filterCards(cat);
-          });
-        });
-
-        filterCards('all');
-      })();
-      </script>
-      <script>
-      (function () {
-        var mq = window.matchMedia("(max-width: 768px)");
-
-        function safeAddMqListener(mql, fn){
-          if (mql.addEventListener) mql.addEventListener("change", fn);
-          else if (mql.addListener) mql.addListener(fn);
-        }
-
-        function initMobileCarousel(block){
-          if (!block || block.__taxMobileInit) return;
-
-          var wrapper = block.querySelector(".tax_lanz_carousel-wrapper");
-          var track   = block.querySelector(".tax_lanz_carousel-container");
-          var items   = track ? track.querySelectorAll(".tax_lanz_carousel-item") : null;
-          var nav     = block.querySelector(".tax_lanz_nav-buttons");
-
-          if (!wrapper || !track || !items || !items.length || !nav) return;
-
-          block.__taxMobileInit = true;
-
-          // Guardar ubicación original del nav para restaurar en desktop
-          if (!nav.__taxStored) {
-            nav.__taxStored = true;
-            nav.__taxOrigParent = nav.parentNode;
-            nav.__taxOrigNext = nav.nextSibling;
-          }
-
-          function placeNavMobile(){
-            // pone las flechas debajo del carrusel
-            if (nav.parentNode !== wrapper.parentNode || nav.previousElementSibling !== wrapper) {
-              wrapper.insertAdjacentElement("afterend", nav);
-            }
-          }
-
-          function restoreNavDesktop(){
-            var p = nav.__taxOrigParent;
-            if (!p) return;
-
-            // si sigue existiendo el nextSibling original, lo insertamos antes
-            if (nav.__taxOrigNext && nav.__taxOrigNext.parentNode === p) {
-              p.insertBefore(nav, nav.__taxOrigNext);
-            } else {
-              p.appendChild(nav);
-            }
-
-            // sacamos el transform inline (no pisamos lógica desktop)
-            track.style.transform = "";
-          }
-
-          var current = 0;
-
-          function getSlideW(){
-            return wrapper.getBoundingClientRect().width || wrapper.clientWidth || 0;
-          }
-
-          function clamp(n, min, max){
-            return Math.max(min, Math.min(max, n));
-          }
-
-          function goTo(i){
-            i = clamp(i, 0, items.length - 1);
-            current = i;
-
-            var w = getSlideW();
-            track.style.transform = "translate3d(" + (-current * w) + "px, 0, 0)";
-
-            updateBtns();
-          }
-
-          function updateBtns(){
-            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
-            if (btns.length >= 1) btns[0].disabled = (current === 0);
-            if (btns.length >= 2) btns[1].disabled = (current === items.length - 1);
-          }
-
-          function bindBtns(){
-            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
-            if (!btns.length) return;
-
-            // Detecta por data-dir="prev|next" si existe, si no asume 1ro prev / 2do next
-            var prev = null, next = null;
-
-            for (var k = 0; k < btns.length; k++){
-              var d = (btns[k].getAttribute("data-dir") || "").toLowerCase();
-              if (d === "prev") prev = btns[k];
-              if (d === "next") next = btns[k];
-            }
-            if (!prev && btns.length >= 1) prev = btns[0];
-            if (!next && btns.length >= 2) next = btns[1];
-
-            if (prev && !prev.__taxBound){
-              prev.__taxBound = true;
-              prev.addEventListener("click", function(e){
-                e.preventDefault();
-                goTo(current - 1);
-              });
-            }
-
-            if (next && !next.__taxBound){
-              next.__taxBound = true;
-              next.addEventListener("click", function(e){
-                e.preventDefault();
-                goTo(current + 1);
-              });
-            }
-          }
-
-          function bindSwipe(){
-            var startX = 0, startY = 0, active = false;
-
-            wrapper.addEventListener("touchstart", function(e){
-              if (!mq.matches) return;
-              if (!e.touches || e.touches.length !== 1) return;
-              active = true;
-              startX = e.touches[0].clientX;
-              startY = e.touches[0].clientY;
-            }, {passive:true});
-
-            wrapper.addEventListener("touchend", function(e){
-              if (!mq.matches) return;
-              if (!active) return;
-              active = false;
-
-              var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
-              if (!t) return;
-
-              var dx = t.clientX - startX;
-              var dy = t.clientY - startY;
-
-              // evita interferir con scroll vertical
-              if (Math.abs(dx) < 35) return;
-              if (Math.abs(dx) < Math.abs(dy)) return;
-
-              if (dx < 0) goTo(current + 1);
-              else goTo(current - 1);
-            }, {passive:true});
-          }
-
-          function onMode(){
-            if (mq.matches){
-              placeNavMobile();
-              bindBtns();
-              goTo(current);
-            } else {
-              restoreNavDesktop();
-            }
-          }
-
-          window.addEventListener("resize", function(){
-            if (!mq.matches) return;
-            goTo(current);
-          });
-
-          bindSwipe();
-          safeAddMqListener(mq, onMode);
-          onMode();
-        }
-
-        function boot(){
-          var blocks = document.querySelectorAll(".tax_lanz_block");
-          for (var i = 0; i < blocks.length; i++){
-            initMobileCarousel(blocks[i]);
-          }
-        }
-
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", boot);
-        } else {
-          boot();
-        }
-      })();
-      </script>
-
-    </section>
-    <?php
-  endif;
-}
-?>
 
 <?php
 /**
@@ -510,6 +104,7 @@ $nlc_products[] = [
  * - title1 (text)
  * - description1 (textarea)
  * - background2 (file/video)
+ * - url_video (url - Vimeo opcional para sección 2)
  * - title2 (text)
  * - description2 (textarea)
  */
@@ -529,18 +124,29 @@ if ( ! function_exists('get_field') ) {
     if ( ! function_exists('nl_tax_gallery_img_url') ) {
         function nl_tax_gallery_img_url( $img, $size = 'large' ) {
             if ( is_array($img) ) {
-                if ( ! empty($img['sizes'][$size]) ) return esc_url($img['sizes'][$size]);
-                if ( ! empty($img['url']) )          return esc_url($img['url']);
+                if ( ! empty($img['sizes'][$size]) ) {
+                    return esc_url($img['sizes'][$size]);
+                }
+
+                if ( ! empty($img['url']) ) {
+                    return esc_url($img['url']);
+                }
+
                 if ( ! empty($img['ID']) ) {
                     $src = wp_get_attachment_image_src((int) $img['ID'], $size);
-                    if ( $src && ! empty($src[0]) ) return esc_url($src[0]);
+                    if ( $src && ! empty($src[0]) ) {
+                        return esc_url($src[0]);
+                    }
                 }
             } elseif ( is_numeric($img) ) {
                 $src = wp_get_attachment_image_src((int) $img, $size);
-                if ($src && !empty($src[0])) return esc_url($src[0]);
+                if ( $src && ! empty($src[0]) ) {
+                    return esc_url($src[0]);
+                }
             } elseif ( is_string($img) && filter_var($img, FILTER_VALIDATE_URL) ) {
                 return esc_url($img);
             }
+
             return '';
         }
     }
@@ -555,19 +161,23 @@ if ( ! function_exists('get_field') ) {
             if ( is_array($gallery) ) {
                 foreach ( $gallery as $item ) {
                     $url = nl_tax_gallery_img_url($item, $size);
+
                     if ( ! $url ) {
                         $url = nl_tax_gallery_img_url($item, 'full');
                     }
+
                     if ( $url ) {
                         $urls[] = $url;
                     }
                 }
             } else {
-                // fallback por si ACF devuelve una sola imagen
+                // Fallback por si ACF devuelve una sola imagen
                 $single = nl_tax_gallery_img_url($gallery, $size);
+
                 if ( ! $single ) {
                     $single = nl_tax_gallery_img_url($gallery, 'full');
                 }
+
                 if ( $single ) {
                     $urls[] = $single;
                 }
@@ -599,9 +209,11 @@ if ( ! function_exists('get_field') ) {
 
                 if ( empty($mime) && ! empty($file['filename']) ) {
                     $wp_filetype = wp_check_filetype($file['filename']);
+
                     if ( ! empty($wp_filetype['type']) ) {
                         $mime = $wp_filetype['type'];
                     }
+
                     if ( ! empty($wp_filetype['ext']) ) {
                         $ext = strtolower($wp_filetype['ext']);
                     }
@@ -609,6 +221,7 @@ if ( ! function_exists('get_field') ) {
 
                 if ( empty($ext) && ! empty($url) ) {
                     $path = parse_url($url, PHP_URL_PATH);
+
                     if ( $path ) {
                         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
                     }
@@ -619,6 +232,7 @@ if ( ! function_exists('get_field') ) {
                 $mime    = get_post_mime_type($file_id);
 
                 $file_path = get_attached_file($file_id);
+
                 if ( $file_path ) {
                     $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
                 }
@@ -626,15 +240,18 @@ if ( ! function_exists('get_field') ) {
                 $url = $file;
 
                 $wp_filetype = wp_check_filetype($url);
+
                 if ( ! empty($wp_filetype['type']) ) {
                     $mime = $wp_filetype['type'];
                 }
+
                 if ( ! empty($wp_filetype['ext']) ) {
                     $ext = strtolower($wp_filetype['ext']);
                 }
 
                 if ( empty($ext) ) {
                     $path = parse_url($url, PHP_URL_PATH);
+
                     if ( $path ) {
                         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
                     }
@@ -658,6 +275,99 @@ if ( ! function_exists('get_field') ) {
         }
     }
 
+    /**
+     * Helper para convertir URL normal de Vimeo a embed de fondo
+     */
+    if ( ! function_exists('nl_tax_gallery_vimeo_embed_url') ) {
+        function nl_tax_gallery_vimeo_embed_url( $url ) {
+            if ( ! is_string($url) || ! filter_var($url, FILTER_VALIDATE_URL) ) {
+                return '';
+            }
+
+            $host = parse_url($url, PHP_URL_HOST);
+            $path = parse_url($url, PHP_URL_PATH);
+
+            if ( ! $host || ! $path ) {
+                return '';
+            }
+
+            $host = strtolower($host);
+
+            if ( strpos($host, 'vimeo.com') === false ) {
+                return '';
+            }
+
+            // Soporta:
+            // https://vimeo.com/1190486686
+            // https://player.vimeo.com/video/1190486686
+            if ( preg_match('~/(?:video/)?([0-9]+)~', $path, $matches) ) {
+                $video_id = $matches[1];
+
+                return esc_url(
+                    'https://player.vimeo.com/video/' . $video_id . '?background=1&autopause=0'
+                );
+            }
+
+            return '';
+        }
+    }
+
+    /**
+     * Helper para renderizar el media.
+     * Se usa dos veces:
+     * - una copia detrás del blur
+     * - una copia en el costado visible
+     */
+    if ( ! function_exists('nl_tax_gallery_render_media') ) {
+        function nl_tax_gallery_render_media( $media_type, $media_url, $media_mime = '', $gallery_urls = [], $copy = 'visual' ) {
+            ob_start();
+
+            if ( $media_type === 'gallery' && ! empty($gallery_urls) ) : ?>
+                <div class="tax_gallery_bg-gallery" data-gallery-interval="3000">
+                    <?php foreach ( $gallery_urls as $index => $url ) : ?>
+                        <img
+                            class="tax_gallery_bg-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                            src="<?php echo esc_url($url); ?>"
+                            alt=""
+                            <?php echo $index === 0 && $copy === 'visual' ? 'fetchpriority="high"' : 'loading="lazy"'; ?>
+                            decoding="async">
+                    <?php endforeach; ?>
+                </div>
+
+            <?php elseif ( $media_type === 'video' && $media_url ) : ?>
+                <video
+                    class="tax_gallery_bg-video"
+                    autoplay
+                    muted
+                    loop
+                    playsinline
+                    preload="metadata">
+                    <source src="<?php echo esc_url($media_url); ?>"<?php if ( $media_mime ) : ?> type="<?php echo esc_attr($media_mime); ?>"<?php endif; ?>>
+                </video>
+
+            <?php elseif ( $media_type === 'vimeo' && $media_url ) : ?>
+                <iframe
+                    class="tax_gallery_bg-video tax_gallery_bg-vimeo"
+                    src="<?php echo esc_url($media_url); ?>"
+                    frameborder="0"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowfullscreen
+                    loading="lazy">
+                </iframe>
+
+            <?php elseif ( $media_type === 'image' && $media_url ) : ?>
+                <img
+                    class="tax_gallery_bg-image"
+                    src="<?php echo esc_url($media_url); ?>"
+                    alt=""
+                    loading="lazy"
+                    decoding="async">
+            <?php endif;
+
+            return ob_get_clean();
+        }
+    }
+
     $section_id = 'tax-gallery-' . ( $term ? $term->term_id : uniqid() );
     $classes    = 'tax_gallery_block';
 
@@ -669,16 +379,32 @@ if ( ! function_exists('get_field') ) {
 
         for ( $i = 1; $i <= 2; $i++ ) {
             $bg_raw = get_field("background{$i}", $term);
+
             if ( ! $bg_raw ) {
                 $bg_raw = get_field("background{$i}", $term_key);
             }
 
+            /**
+             * Solo para sección 2:
+             * Primero mantiene compatibilidad con background2.
+             * Si no hay archivo cargado en background2, usa url_video.
+             */
+            if ( $i === 2 && ! $bg_raw ) {
+                $bg_raw = get_field('url_video', $term);
+
+                if ( ! $bg_raw ) {
+                    $bg_raw = get_field('url_video', $term_key);
+                }
+            }
+
             $t = (string) get_field("title{$i}", $term);
+
             if ( $t === '' ) {
                 $t = (string) get_field("title{$i}", $term_key);
             }
 
             $d = (string) get_field("description{$i}", $term);
+
             if ( $d === '' ) {
                 $d = (string) get_field("description{$i}", $term_key);
             }
@@ -703,7 +429,8 @@ if ( ! function_exists('get_field') ) {
                     $media_type = 'gallery';
                 }
             } else {
-                // background2 sigue siendo file/video
+                // background2 sigue siendo file/video.
+                // Si background2 está vacío, puede venir url_video.
                 $media = nl_tax_gallery_media_data($bg_raw);
 
                 if ( ! empty($media['url']) && ! empty($media['is_video']) ) {
@@ -711,10 +438,18 @@ if ( ! function_exists('get_field') ) {
                     $media_url  = $media['url'];
                     $media_mime = $media['mime'];
                 } else {
-                    $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
-                    if ( $img_url ) {
-                        $media_type = 'image';
-                        $media_url  = $img_url;
+                    $vimeo_embed = nl_tax_gallery_vimeo_embed_url($bg_raw);
+
+                    if ( $vimeo_embed ) {
+                        $media_type = 'vimeo';
+                        $media_url  = $vimeo_embed;
+                    } else {
+                        $img_url = nl_tax_gallery_img_url($bg_raw, 'large') ?: nl_tax_gallery_img_url($bg_raw, 'full');
+
+                        if ( $img_url ) {
+                            $media_type = 'image';
+                            $media_url  = $img_url;
+                        }
                     }
                 }
             }
@@ -744,41 +479,37 @@ if ( ! function_exists('get_field') ) {
                 $t            = $sections[$i]['t'] ?? '';
                 $d            = $sections[$i]['d'] ?? '';
 
-                if ( $media_url === '' && empty($gallery_urls) && $t === '' && $d === '' ) continue;
+                if ( $media_url === '' && empty($gallery_urls) && $t === '' && $d === '' ) {
+                    continue;
+                }
             ?>
                 <div class="tax_gallery_section tax_gallery_section-<?php echo (int) $i; ?>">
-                    <div class="tax_gallery_section-background">
-                        <?php if ( $media_type === 'gallery' && ! empty($gallery_urls) ) : ?>
-                            <div class="tax_gallery_bg-gallery" data-gallery-interval="3000">
-                                <?php foreach ( $gallery_urls as $index => $url ) : ?>
-                                    <img
-                                        class="tax_gallery_bg-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
-                                        src="<?php echo esc_url($url); ?>"
-                                        alt=""
-                                        <?php echo $index === 0 ? 'fetchpriority="high"' : 'loading="lazy"'; ?>
-                                        decoding="async">
-                                <?php endforeach; ?>
-                            </div>
+                    <div class="tax_gallery_section-background" aria-hidden="true">
 
-                        <?php elseif ( $media_type === 'video' && $media_url ) : ?>
-                            <video
-                                class="tax_gallery_bg-video"
-                                autoplay
-                                muted
-                                loop
-                                playsinline
-                                preload="metadata">
-                                <source src="<?php echo esc_url($media_url); ?>"<?php if ( $media_mime ) : ?> type="<?php echo esc_attr($media_mime); ?>"<?php endif; ?>>
-                            </video>
+                        <div class="tax_gallery_background-part tax_gallery_background-part-blur" data-tax-gallery-copy="blur">
+                            <?php
+                            echo nl_tax_gallery_render_media(
+                                $media_type,
+                                $media_url,
+                                $media_mime,
+                                $gallery_urls,
+                                'blur'
+                            );
+                            ?>
+                        </div>
 
-                        <?php elseif ( $media_type === 'image' && $media_url ) : ?>
-                            <img
-                                class="tax_gallery_bg-image"
-                                src="<?php echo esc_url($media_url); ?>"
-                                alt=""
-                                loading="lazy"
-                                decoding="async">
-                        <?php endif; ?>
+                        <div class="tax_gallery_background-part tax_gallery_background-part-visual" data-tax-gallery-copy="visual">
+                            <?php
+                            echo nl_tax_gallery_render_media(
+                                $media_type,
+                                $media_url,
+                                $media_mime,
+                                $gallery_urls,
+                                'visual'
+                            );
+                            ?>
+                        </div>
+
                     </div>
 
                     <div class="tax_gallery_content-wrapper">
@@ -801,6 +532,48 @@ if ( ! function_exists('get_field') ) {
                 </div>
             <?php endfor; ?>
         </section>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const blocks = document.querySelectorAll('.tax_gallery_block');
+
+                blocks.forEach(function (block) {
+                    if (block.dataset.taxGallerySynced === 'true') return;
+                    block.dataset.taxGallerySynced = 'true';
+
+                    const sections = block.querySelectorAll('.tax_gallery_section');
+
+                    sections.forEach(function (section) {
+                        const galleries = section.querySelectorAll('.tax_gallery_bg-gallery');
+
+                        if (!galleries.length) return;
+
+                        const firstGallery = galleries[0];
+                        const firstSlides = firstGallery.querySelectorAll('.tax_gallery_bg-slide');
+
+                        if (firstSlides.length <= 1) return;
+
+                        const interval = parseInt(firstGallery.dataset.galleryInterval || '3000', 10);
+                        let currentIndex = 0;
+
+                        function setActiveSlide(index) {
+                            galleries.forEach(function (gallery) {
+                                const slides = gallery.querySelectorAll('.tax_gallery_bg-slide');
+
+                                slides.forEach(function (slide, slideIndex) {
+                                    slide.classList.toggle('is-active', slideIndex === index);
+                                });
+                            });
+                        }
+
+                        setInterval(function () {
+                            currentIndex = (currentIndex + 1) % firstSlides.length;
+                            setActiveSlide(currentIndex);
+                        }, interval);
+                    });
+                });
+            });
+        </script>
 
         <script>
         (function(){
@@ -838,6 +611,421 @@ if ( ! function_exists('get_field') ) {
     endif;
 }
 ?>
+
+
+<?php
+// =============================
+// Productos de la colección paginados
+// =============================
+$coleccion_term = get_queried_object();
+
+if ( $coleccion_term instanceof WP_Term ) {
+
+  $sec_id = 'nl-coleccion-products-' . $coleccion_term->term_id;
+
+  // Cantidad de productos por página
+  $products_per_page = 12;
+
+  // Página actual propia de este bloque
+  $nlc_page = isset($_GET['nlc_page']) ? max(1, absint($_GET['nlc_page'])) : 1;
+
+  // Categoría activa por URL
+  $selected_cat = isset($_GET['nlc_cat']) ? sanitize_title(wp_unslash($_GET['nlc_cat'])) : 'all';
+
+  // URL base de la colección
+  $nlc_base_url = get_term_link($coleccion_term);
+  if ( is_wp_error($nlc_base_url) ) {
+    $nlc_base_url = home_url('/');
+  }
+
+  // =============================
+  // Primero buscamos TODAS las categorías disponibles dentro de esta colección
+  // Esto es solo para armar los filtros, no para mostrar productos
+  // =============================
+  $nlc_all_ids_query = new WP_Query([
+    'post_type'              => 'product',
+    'post_status'            => 'publish',
+    'posts_per_page'         => -1,
+    'fields'                 => 'ids',
+    'no_found_rows'          => true,
+    'ignore_sticky_posts'    => true,
+    'tax_query'              => [
+      [
+        'taxonomy' => 'coleccion',
+        'field'    => 'term_id',
+        'terms'    => $coleccion_term->term_id,
+      ],
+    ],
+  ]);
+
+  $nlc_cats_map = [];
+  $blacklist_slugs = [ 'uncategorized', 'sin-categoria' ];
+
+  if ( ! empty($nlc_all_ids_query->posts) ) {
+    foreach ( $nlc_all_ids_query->posts as $pid ) {
+      $cats = get_the_terms($pid, 'product_cat');
+
+      if ( $cats && ! is_wp_error($cats) ) {
+        foreach ( $cats as $c ) {
+          if ( in_array($c->slug, $blacklist_slugs, true) ) {
+            continue;
+          }
+
+          $nlc_cats_map[$c->slug] = [
+            'slug' => $c->slug,
+            'name' => $c->name,
+          ];
+        }
+      }
+    }
+  }
+
+  wp_reset_postdata();
+
+  if ( ! empty($nlc_cats_map) ) {
+    uasort($nlc_cats_map, function($a, $b) {
+      return strcasecmp($a['name'], $b['name']);
+    });
+  }
+
+  // Si viene una categoría inválida por URL, volvemos a "all"
+  if ( $selected_cat !== 'all' && ! isset($nlc_cats_map[$selected_cat]) ) {
+    $selected_cat = 'all';
+  }
+
+  // Helper para URLs de filtro
+  $nlc_filter_url = function($cat_slug) use ($nlc_base_url, $sec_id) {
+    $args = [];
+
+    if ( $cat_slug !== 'all' ) {
+      $args['nlc_cat'] = $cat_slug;
+    }
+
+    return esc_url( add_query_arg($args, $nlc_base_url) . '#' . $sec_id );
+  };
+
+  // =============================
+  // Query paginada real
+  // =============================
+  $tax_query = [
+    [
+      'taxonomy' => 'coleccion',
+      'field'    => 'term_id',
+      'terms'    => $coleccion_term->term_id,
+    ],
+  ];
+
+  if ( $selected_cat !== 'all' ) {
+    $tax_query[] = [
+      'taxonomy' => 'product_cat',
+      'field'    => 'slug',
+      'terms'    => $selected_cat,
+    ];
+  }
+
+  $nlc_args = [
+    'post_type'           => 'product',
+    'post_status'         => 'publish',
+    'posts_per_page'      => $products_per_page,
+    'paged'               => $nlc_page,
+    'ignore_sticky_posts' => true,
+    'tax_query'           => $tax_query,
+    'orderby'             => 'date',
+    'order'               => 'DESC',
+  ];
+
+  $nlc_query = new WP_Query($nlc_args);
+
+  // Si no hay productos en la colección, no mostramos sección
+  if ( $nlc_query->have_posts() || ! empty($nlc_cats_map) ) :
+?>
+
+<section id="<?php echo esc_attr($sec_id); ?>" class="nl-coleccion-products">
+
+  <div class="coleccion-products__header">
+    <h1 class="font-heading-2">
+      <?php esc_html_e('Explora la colección', 'nalakalu'); ?>
+    </h1>
+  </div>
+
+  <div class="nl-coleccion-products__inner">
+
+    <div class="nl-coleccion-products__mobile-filter-bar">
+      <button
+        type="button"
+        class="nl-coleccion-products__mobile-filter-toggle"
+        aria-controls="nl-coleccion-products-filter-modal"
+        aria-expanded="false"
+      >
+        <span><?php esc_html_e('FILTROS', 'nalakalu'); ?></span>
+        <span class="nl-coleccion-products__mobile-filter-icon" aria-hidden="true">+</span>
+      </button>
+    </div>
+
+    <aside class="nl-coleccion-products__header nl-coleccion-products__aside">
+      <div class="nl-coleccion-products__filter-box">
+        <h2 class="nl-coleccion-products__filter-title">
+          <?php esc_html_e('FILTROS', 'nalakalu'); ?>
+        </h2>
+
+        <div
+          class="nl-coleccion-products__tabs nl-coleccion-products__filter-content font-overline"
+          role="tablist"
+          aria-label="<?php esc_attr_e('Categorías de productos', 'nalakalu'); ?>"
+        >
+          <a
+            href="<?php echo $nlc_filter_url('all'); ?>"
+            class="nl-coleccion-products__tab nl-coleccion-products__filter-item <?php echo $selected_cat === 'all' ? 'is-active' : ''; ?>"
+            role="tab"
+            aria-selected="<?php echo $selected_cat === 'all' ? 'true' : 'false'; ?>"
+          >
+            <span class="nl-coleccion-products__filter-label">
+              <?php esc_html_e('TODOS', 'nalakalu'); ?>
+            </span>
+          </a>
+
+          <?php if ( ! empty($nlc_cats_map) ) : ?>
+            <?php foreach ( $nlc_cats_map as $cat ) : ?>
+              <a
+                href="<?php echo $nlc_filter_url($cat['slug']); ?>"
+                class="nl-coleccion-products__tab nl-coleccion-products__filter-item <?php echo $selected_cat === $cat['slug'] ? 'is-active' : ''; ?>"
+                role="tab"
+                aria-selected="<?php echo $selected_cat === $cat['slug'] ? 'true' : 'false'; ?>"
+              >
+                <span class="nl-coleccion-products__filter-label">
+                  <?php echo esc_html(mb_strtoupper($cat['name'], 'UTF-8')); ?>
+                </span>
+              </a>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+      </div>
+    </aside>
+
+    <div
+      id="nl-coleccion-products-filter-modal"
+      class="nl-coleccion-products__filter-modal"
+      aria-hidden="true"
+    >
+      <div class="nl-coleccion-products__filter-modal-overlay" data-nlc-filter-close></div>
+
+      <div
+        class="nl-coleccion-products__filter-modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nl-coleccion-products-filter-modal-title"
+      >
+        <div class="nl-coleccion-products__filter-modal-head">
+          <h2
+            id="nl-coleccion-products-filter-modal-title"
+            class="nl-coleccion-products__filter-modal-title"
+          >
+            <?php esc_html_e('FILTROS', 'nalakalu'); ?>
+          </h2>
+
+          <button
+            type="button"
+            class="nl-coleccion-products__filter-modal-close"
+            aria-label="<?php esc_attr_e('Cerrar filtros', 'nalakalu'); ?>"
+            data-nlc-filter-close
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          class="nl-coleccion-products__tabs nl-coleccion-products__filter-content nl-coleccion-products__filter-content--modal font-overline"
+          role="tablist"
+          aria-label="<?php esc_attr_e('Categorías de productos', 'nalakalu'); ?>"
+        >
+          <a
+            href="<?php echo $nlc_filter_url('all'); ?>"
+            class="nl-coleccion-products__tab nl-coleccion-products__filter-item <?php echo $selected_cat === 'all' ? 'is-active' : ''; ?>"
+            role="tab"
+            aria-selected="<?php echo $selected_cat === 'all' ? 'true' : 'false'; ?>"
+          >
+            <span class="nl-coleccion-products__filter-label">
+              <?php esc_html_e('TODOS', 'nalakalu'); ?>
+            </span>
+          </a>
+
+          <?php if ( ! empty($nlc_cats_map) ) : ?>
+            <?php foreach ( $nlc_cats_map as $cat ) : ?>
+              <a
+                href="<?php echo $nlc_filter_url($cat['slug']); ?>"
+                class="nl-coleccion-products__tab nl-coleccion-products__filter-item <?php echo $selected_cat === $cat['slug'] ? 'is-active' : ''; ?>"
+                role="tab"
+                aria-selected="<?php echo $selected_cat === $cat['slug'] ? 'true' : 'false'; ?>"
+              >
+                <span class="nl-coleccion-products__filter-label">
+                  <?php echo esc_html(mb_strtoupper($cat['name'], 'UTF-8')); ?>
+                </span>
+              </a>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
+
+    <div class="nl-coleccion-products__grid-wrapper">
+
+      <?php if ( $nlc_query->have_posts() ) : ?>
+
+        <div class="nl-coleccion-products__grid">
+
+          <?php while ( $nlc_query->have_posts() ) : $nlc_query->the_post(); ?>
+            <?php
+              $pid   = get_the_ID();
+              $plink = get_permalink($pid);
+              $pname = get_the_title($pid);
+
+              $thumb_id   = get_post_thumbnail_id($pid);
+              $thumb_html = '';
+
+              if ( $thumb_id ) {
+                $thumb_html = wp_get_attachment_image($thumb_id, 'medium_large', false, [
+                  'class'    => 'nl-coleccion-products__img',
+                  'alt'      => $pname,
+                  'loading'  => 'lazy',
+                  'decoding' => 'async',
+                  'sizes'    => '(max-width: 480px) 85vw, (max-width: 768px) 45vw, (max-width: 1200px) 33vw, 25vw',
+                ]);
+              }
+
+              if ( ! $thumb_html && function_exists('wc_placeholder_img_src') ) {
+                $thumb_html = '<img class="nl-coleccion-products__img" src="' . esc_url(wc_placeholder_img_src('medium_large')) . '" alt="' . esc_attr($pname) . '" loading="lazy" decoding="async">';
+              }
+
+              $price_html = '';
+
+              if ( function_exists('wc_get_product') ) {
+                $product_obj = wc_get_product($pid);
+
+                if ( $product_obj ) {
+                  $price_html = $product_obj->get_price_html();
+                }
+              }
+            ?>
+
+            <a
+              href="<?php echo esc_url($plink); ?>"
+              class="nl-coleccion-products__card"
+            >
+              <div class="nl-coleccion-products__image">
+                <?php echo $thumb_html; ?>
+              </div>
+
+              <div class="nl-coleccion-products__info">
+                <div class="nl-coleccion-products__details">
+                  <div class="nl-coleccion-products__name">
+                    <?php echo esc_html($pname); ?>
+                  </div>
+                </div>
+
+                <?php if ( $price_html ) : ?>
+                  <div class="nl-coleccion-products__price">
+                    <?php echo wp_kses_post($price_html); ?>
+                  </div>
+                <?php endif; ?>
+              </div>
+            </a>
+
+          <?php endwhile; ?>
+
+        </div>
+
+        <?php
+          $pagination_base = add_query_arg('nlc_page', '%#%', $nlc_base_url);
+
+          if ( $selected_cat !== 'all' ) {
+            $pagination_base = add_query_arg('nlc_cat', $selected_cat, $pagination_base);
+          }
+
+          $pagination = paginate_links([
+            'base'      => $pagination_base,
+            'format'    => '',
+            'current'   => $nlc_page,
+            'total'     => max(1, (int) $nlc_query->max_num_pages),
+            'mid_size'  => 1,
+            'end_size'  => 1,
+            'prev_text' => '‹',
+            'next_text' => '›',
+            'type'      => 'list',
+            'add_fragment' => '#' . $sec_id,
+          ]);
+        ?>
+
+        <?php if ( $pagination ) : ?>
+          <nav class="nl-coleccion-products__pagination" aria-label="<?php esc_attr_e('Paginación de productos', 'nalakalu'); ?>">
+            <?php echo $pagination; ?>
+          </nav>
+        <?php endif; ?>
+
+      <?php else : ?>
+
+        <p class="nl-coleccion-products__empty">
+          <?php esc_html_e('No hay productos para este filtro.', 'nalakalu'); ?>
+        </p>
+
+      <?php endif; ?>
+
+      <?php wp_reset_postdata(); ?>
+
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var modal = document.getElementById('nl-coleccion-products-filter-modal');
+    var openBtn = document.querySelector('.nl-coleccion-products__mobile-filter-toggle');
+
+    if (!modal || !openBtn) return;
+
+    var closeEls = modal.querySelectorAll('[data-nlc-filter-close]');
+
+    function openModal() {
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      openBtn.setAttribute('aria-expanded', 'true');
+      document.documentElement.classList.add('nl-coleccion-products-modal-open');
+      document.body.classList.add('nl-coleccion-products-modal-open');
+    }
+
+    function closeModal() {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      openBtn.setAttribute('aria-expanded', 'false');
+      document.documentElement.classList.remove('nl-coleccion-products-modal-open');
+      document.body.classList.remove('nl-coleccion-products-modal-open');
+    }
+
+    openBtn.addEventListener('click', function () {
+      if (modal.classList.contains('is-open')) {
+        closeModal();
+      } else {
+        openModal();
+      }
+    });
+
+    closeEls.forEach(function (el) {
+      el.addEventListener('click', closeModal);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('is-open')) {
+        closeModal();
+      }
+    });
+  })();
+  </script>
+
+</section>
+
+<?php
+  endif;
+}
+?>
+
 
 <?php
 // =============================
@@ -1022,6 +1210,181 @@ if ( function_exists('get_field') ) {
     } // $lanz_term instanceof WP_Term
 } // function_exists('get_field')
 ?>
+
+<?php // Script mobile del carousel de lanzamiento: fuera del bloque de productos para no depender del orden. ?>
+<script>
+      (function () {
+        var mq = window.matchMedia("(max-width: 768px)");
+
+        function safeAddMqListener(mql, fn){
+          if (mql.addEventListener) mql.addEventListener("change", fn);
+          else if (mql.addListener) mql.addListener(fn);
+        }
+
+        function initMobileCarousel(block){
+          if (!block || block.__taxMobileInit) return;
+
+          var wrapper = block.querySelector(".tax_lanz_carousel-wrapper");
+          var track   = block.querySelector(".tax_lanz_carousel-container");
+          var items   = track ? track.querySelectorAll(".tax_lanz_carousel-item") : null;
+          var nav     = block.querySelector(".tax_lanz_nav-buttons");
+
+          if (!wrapper || !track || !items || !items.length || !nav) return;
+
+          block.__taxMobileInit = true;
+
+          // Guardar ubicación original del nav para restaurar en desktop
+          if (!nav.__taxStored) {
+            nav.__taxStored = true;
+            nav.__taxOrigParent = nav.parentNode;
+            nav.__taxOrigNext = nav.nextSibling;
+          }
+
+          function placeNavMobile(){
+            // pone las flechas debajo del carrusel
+            if (nav.parentNode !== wrapper.parentNode || nav.previousElementSibling !== wrapper) {
+              wrapper.insertAdjacentElement("afterend", nav);
+            }
+          }
+
+          function restoreNavDesktop(){
+            var p = nav.__taxOrigParent;
+            if (!p) return;
+
+            // si sigue existiendo el nextSibling original, lo insertamos antes
+            if (nav.__taxOrigNext && nav.__taxOrigNext.parentNode === p) {
+              p.insertBefore(nav, nav.__taxOrigNext);
+            } else {
+              p.appendChild(nav);
+            }
+
+            // sacamos el transform inline (no pisamos lógica desktop)
+            track.style.transform = "";
+          }
+
+          var current = 0;
+
+          function getSlideW(){
+            return wrapper.getBoundingClientRect().width || wrapper.clientWidth || 0;
+          }
+
+          function clamp(n, min, max){
+            return Math.max(min, Math.min(max, n));
+          }
+
+          function goTo(i){
+            i = clamp(i, 0, items.length - 1);
+            current = i;
+
+            var w = getSlideW();
+            track.style.transform = "translate3d(" + (-current * w) + "px, 0, 0)";
+
+            updateBtns();
+          }
+
+          function updateBtns(){
+            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
+            if (btns.length >= 1) btns[0].disabled = (current === 0);
+            if (btns.length >= 2) btns[1].disabled = (current === items.length - 1);
+          }
+
+          function bindBtns(){
+            var btns = nav.querySelectorAll(".tax_lanz_nav-btn");
+            if (!btns.length) return;
+
+            // Detecta por data-dir="prev|next" si existe, si no asume 1ro prev / 2do next
+            var prev = null, next = null;
+
+            for (var k = 0; k < btns.length; k++){
+              var d = (btns[k].getAttribute("data-dir") || "").toLowerCase();
+              if (d === "prev") prev = btns[k];
+              if (d === "next") next = btns[k];
+            }
+            if (!prev && btns.length >= 1) prev = btns[0];
+            if (!next && btns.length >= 2) next = btns[1];
+
+            if (prev && !prev.__taxBound){
+              prev.__taxBound = true;
+              prev.addEventListener("click", function(e){
+                e.preventDefault();
+                goTo(current - 1);
+              });
+            }
+
+            if (next && !next.__taxBound){
+              next.__taxBound = true;
+              next.addEventListener("click", function(e){
+                e.preventDefault();
+                goTo(current + 1);
+              });
+            }
+          }
+
+          function bindSwipe(){
+            var startX = 0, startY = 0, active = false;
+
+            wrapper.addEventListener("touchstart", function(e){
+              if (!mq.matches) return;
+              if (!e.touches || e.touches.length !== 1) return;
+              active = true;
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+            }, {passive:true});
+
+            wrapper.addEventListener("touchend", function(e){
+              if (!mq.matches) return;
+              if (!active) return;
+              active = false;
+
+              var t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+              if (!t) return;
+
+              var dx = t.clientX - startX;
+              var dy = t.clientY - startY;
+
+              // evita interferir con scroll vertical
+              if (Math.abs(dx) < 35) return;
+              if (Math.abs(dx) < Math.abs(dy)) return;
+
+              if (dx < 0) goTo(current + 1);
+              else goTo(current - 1);
+            }, {passive:true});
+          }
+
+          function onMode(){
+            if (mq.matches){
+              placeNavMobile();
+              bindBtns();
+              goTo(current);
+            } else {
+              restoreNavDesktop();
+            }
+          }
+
+          window.addEventListener("resize", function(){
+            if (!mq.matches) return;
+            goTo(current);
+          });
+
+          bindSwipe();
+          safeAddMqListener(mq, onMode);
+          onMode();
+        }
+
+        function boot(){
+          var blocks = document.querySelectorAll(".tax_lanz_block");
+          for (var i = 0; i < blocks.length; i++){
+            initMobileCarousel(blocks[i]);
+          }
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", boot);
+        } else {
+          boot();
+        }
+      })();
+      </script>
 
 </main>
 

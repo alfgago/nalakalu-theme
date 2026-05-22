@@ -348,6 +348,16 @@ line-height: 25px;
 }
 
 @media (max-width: 768px) {
+  
+  .nl_blog_list-content{
+    padding:10px;
+  }
+  
+  .nl_blog_list-media {
+  width: 100%;
+  overflow: hidden;
+  }
+  
   .nl_blog_container{
     padding:1.5rem 2rem;
   }
@@ -381,4 +391,9 @@ line-height: 25px;
   .nl_blog_articles-grid {
     grid-template-columns: 1fr;
   }
+  
+  .nl_blog_read-more {
+    font-size: 1.8rem;
+    margin-top: 1rem;
+}
 }

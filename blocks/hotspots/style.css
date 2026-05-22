@@ -7,7 +7,7 @@
   padding: 0rem 8rem 6rem 8rem;
 }
 
-.nl-hotspots .carousel-wrapper {
+.nl-hotspots .carousel-wrapper-hotspot{
   position: relative;
   width: 100%;
   padding: 0;
@@ -24,8 +24,6 @@
   flex-shrink: 0;
   width: 30%;
 }
-
-
 
 .nl-hotspots .testimonial {
   margin-top: 3rem;
@@ -115,7 +113,6 @@
 
 .nl-hotspots .woocommerce-lookbook-inner {
   position: relative;
-  height: 600px;
   overflow: hidden;
 }
 
@@ -225,7 +222,6 @@
   display: flex;
   gap: 8px;
   z-index: 10;
-
 }
 
 .nl-hotspots .dot {
@@ -235,7 +231,7 @@
   background: rgba(255,255,255,0.5);
   cursor: pointer;
   transition: all .3s ease;
-    padding:0;
+  padding: 0;
 }
 
 .nl-hotspots .dot.active {
@@ -332,7 +328,6 @@ body.hs-modal-open {
   font-weight: 300;
 }
 
-
 /* Mobile: que los botones SI reciban click */
 @media (max-width: 768px) {
   .nl-hotspots .nav-buttons {
@@ -365,23 +360,8 @@ body.hs-modal-open {
 }
 
 @media (max-width: 768px) {
-  .nav-buttons--desktop {
+  .nl-hotspots .nav-buttons--desktop {
     display: none !important;
-  }
-
-  .nav-buttons--mobile {
-    display: flex !important;
-    position: static;
-    margin-top: 12px;
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
-    z-index: 50;
-    pointer-events: auto;
-  }
-
-  .nav-buttons--mobile .nav-btn {
-    pointer-events: auto;
   }
 
   .nl-hotspots .thumbnail-preview {
@@ -389,22 +369,40 @@ body.hs-modal-open {
   }
 
   .nl-hotspots .hs-container {
-    padding: 4rem 2rem;
+    padding: 4rem 1.25rem 0rem 1.25rem;
   }
 
+  /*
+    Mobile:
+    Testimonio arriba completo.
+    Abajo quedan lado a lado:
+    izquierda = galería lateral
+    derecha = lookbook principal
+  */
   .nl-hotspots .carousel-content {
-    flex-direction: column;
-    gap: 24px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "testimonial testimonial"
+      "sidegallery maincarousel";
+    gap: 18px 12px !important;
+    align-items: start;
   }
 
+  /*
+    Permite que testimonial y galería lateral entren al grid
+    sin cambiar el PHP.
+  */
   .nl-hotspots .left-panel {
-    width: 100%;
+    display: contents !important;
+    width: auto !important;
   }
 
   /* Título + overline en la misma línea, texto abajo */
   .nl-hotspots .testimonial {
+    grid-area: testimonial;
     margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
     width: 100%;
     background: transparent;
     backdrop-filter: none;
@@ -437,7 +435,33 @@ body.hs-modal-open {
     max-width: 100%;
     overflow-wrap: anywhere;
     word-break: break-word;
-    text-align:justify;
+    text-align: justify;
+  }
+
+  .nl-hotspots .hs-side-gallery {
+    grid-area: sidegallery;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0;
+    overflow: hidden;
+  }
+
+  .nl-hotspots .main-carousel {
+    grid-area: maincarousel;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
+    gap: 0;
+    position: relative;
+  }
+
+  .nl-hotspots .carousel-main-image {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    position: relative;
   }
 
   /* En mobile el product-card NO se ve */
@@ -450,29 +474,105 @@ body.hs-modal-open {
     display: none !important;
   }
 
-  /* Alto del lookbook más mobile-friendly */
-  .nl-hotspots .woocommerce-lookbook-inner {
-    height: clamp(320px, 70vw, 520px);
+  /*
+    Misma altura para los dos carruseles mobile.
+  */
+  .nl-hotspots .hs-side-gallery__viewport,
+  .nl-hotspots .carousel-main-image {
+    height: clamp(230px, 66vw, 340px);
   }
 
-  /* Flechas abajo de la imagen */
-  .nl-hotspots .nav-buttons {
-    position: static;
-    margin-top: 12px;
-    width: 100%;
-    display: flex;
+  .nl-hotspots .carousel-track,
+  .nl-hotspots .hs-side-gallery__track {
+    height: 100%;
+    will-change: transform;
+    transition: transform 0.35s ease;
+  }
+
+  .nl-hotspots .carousel-slide,
+  .nl-hotspots .hs-side-gallery__slide {
+    height: 100%;
+  }
+
+  .nl-hotspots .woocommerce-lookbook,
+  .nl-hotspots .woocommerce-lookbook-inner,
+  .nl-hotspots .wlb-lookbook-item-wrapper,
+  .nl-hotspots .woocommerce-lookbook .wlb-image,
+  .nl-hotspots .woocommerce-lookbook-inner > img.wlb-image,
+  .nl-hotspots .wlb-lookbook-item-wrapper img.wlb-image,
+  .nl-hotspots .hs-side-gallery__img,
+  .nl-hotspots .hs-side-gallery__empty {
+    height: clamp(230px, 66vw, 340px) !important;
+    max-height: clamp(230px, 66vw, 340px) !important;
+    min-height: 0 !important;
+  }
+
+  .nl-hotspots .woocommerce-lookbook .wlb-image,
+  .nl-hotspots .woocommerce-lookbook-inner > img.wlb-image,
+  .nl-hotspots .wlb-lookbook-item-wrapper img.wlb-image,
+  .nl-hotspots .hs-side-gallery__img,
+  .nl-hotspots .hs-side-gallery__empty {
+    width: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    border-radius: 6px !important;
+    display: block !important;
+  }
+
+  /*
+    Swipe horizontal sin romper el scroll vertical.
+    La lógica del swipe queda en el JS addon, no en el CSS.
+  */
+  .nl-hotspots .carousel-main-image,
+  .nl-hotspots .hs-side-gallery__viewport {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Flechas mobile encima del carrusel derecho */
+  .nl-hotspots .nav-buttons--mobile {
+    display: flex !important;
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    margin: 0;
     justify-content: space-between;
     gap: 12px;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  .nl-hotspots .nav-buttons--mobile .nav-btn {
+    width: 38px;
+    height: 38px;
+    pointer-events: auto;
+  }
+
+  .nl-hotspots .nav-buttons {
+    pointer-events: auto;
   }
 
   .nl-hotspots .nav-btn {
-    width: 48px;
-    height: 48px;
+    pointer-events: auto;
   }
 
   .nl-hotspots .dots-indicator {
-    top: 12px;
-    right: 12px;
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+  }
+
+  .nl-hotspots .dot,
+  .nl-hotspots .hs-side-gallery__dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .nl-hotspots .hs-side-gallery__dots {
+    margin-top: 0.65rem;
+    gap: 7px;
   }
 
   /* Modal Mobile */
@@ -572,8 +672,9 @@ body.hs-modal-open {
 
 .nl-hotspots .hs-side-gallery {
   position: relative;
-  margin-top: 1.5rem;
+  margin-top:0;
   max-width: 100%;
+  padding-bottom:10px;
 }
 
 .nl-hotspots .hs-side-gallery__viewport {
@@ -602,7 +703,7 @@ body.hs-modal-open {
   display: block;
   width: 100%;
   max-width: 100%;
-  height: 22rem;
+  height: clamp(240px, 34vh, 22rem);
   object-fit: cover;
   object-position: center;
   border-radius: 6px;
@@ -640,18 +741,100 @@ body.hs-modal-open {
   transform: scale(1.2);
 }
 
+/* Swipe mobile */
+@media (max-width: 767px) {
+  .nl-hotspots .carousel-main-image,
+  .nl-hotspots .hs-side-gallery__viewport {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nl-hotspots .carousel-track,
+  .nl-hotspots .hs-side-gallery__track {
+    will-change: transform;
+    transition: transform 0.35s ease;
+  }
+}
+
+/* FIX altura imagen grande derecha - desktop */
+@media (min-width: 769px) {
+  .nl-hotspots .main-carousel .carousel-main-image {
+    height: auto !important;
+  }
+
+  .nl-hotspots .main-carousel .woocommerce-lookbook,
+  .nl-hotspots .main-carousel .woocommerce-lookbook-inner,
+  .nl-hotspots .main-carousel .wlb-lookbook-item-wrapper {
+    height: 40rem !important;
+    max-height: 40rem !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .nl-hotspots .main-carousel .woocommerce-lookbook .wlb-image,
+  .nl-hotspots .main-carousel .woocommerce-lookbook-inner > img.wlb-image,
+  .nl-hotspots .main-carousel .wlb-lookbook-item-wrapper img.wlb-image {
+    width: 100%;
+    height: 40rem;
+    max-height: 40rem !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  .nl-hotspots .testimonial .testimonial-text{
+    font-size: 1.5rem;
+  }
+}
+/* =========================================================
+   HOTSPOTS MOBILE - SWIPE NATIVO REAL
+   No toca desktop
+   ========================================================= */
+
 @media (max-width: 768px) {
-  .nl-hotspots .hs-side-gallery {
-    margin-top: 1rem;
+  .nl-hotspots .carousel-main-image,
+  .nl-hotspots .hs-side-gallery__viewport {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    scrollbar-width: none;
   }
 
-  .nl-hotspots .hs-side-gallery__img,
-  .nl-hotspots .hs-side-gallery__empty {
-    height: clamp(220px, 60vw, 320px);
+  .nl-hotspots .carousel-main-image::-webkit-scrollbar,
+  .nl-hotspots .hs-side-gallery__viewport::-webkit-scrollbar {
+    display: none;
   }
 
-  .nl-hotspots .hs-side-gallery__dots {
-    margin-top: 0.75rem;
-    gap: 8px;
+  /*
+    Clave:
+    anulamos el transform mobile porque ahora el movimiento
+    lo hace el scroll nativo del viewport.
+  */
+  .nl-hotspots .carousel-track,
+  .nl-hotspots .hs-side-gallery__track {
+    transform: none !important;
+    transition: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: auto !important;
+    will-change: auto !important;
+  }
+
+  .nl-hotspots .carousel-slide,
+  .nl-hotspots .hs-side-gallery__slide {
+    flex: 0 0 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always;
+  }
+
+  .nl-hotspots .carousel-main-image img,
+  .nl-hotspots .hs-side-gallery__viewport img {
+    -webkit-user-drag: none;
+    user-select: none;
   }
 }

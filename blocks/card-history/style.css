@@ -195,20 +195,24 @@
 }
 
 @media (max-width: 768px){
+
+  .card-history{
+    --ch-card-h: auto;
+    --ch-top: auto;
+    --ch-step: auto;
+    --ch-gap-between: 0px;
+    --ch-last-hold: 0px;
+
+    min-height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
   .card-history .background-wrapper{
     position: relative;
   }
-  .card-history .ch-card.is-reverse {
-    flex-direction: column-reverse;
-}
-  
-  .only-mobile{
-    display:flex;
-  }
-  .only-desktop{
-  display:none;
-}
 
+  /* Mantiene el fondo como lo tenías en mobile */
   .card-history .background-section{
     position: absolute !important;
     inset: 0 !important;
@@ -223,40 +227,79 @@
   .card-history .ch-stack{
     position: relative !important;
     z-index: 1 !important;
+    padding-bottom: 4rem;
   }
+
+  /* Esto es lo importante: desactiva el sticky en mobile */
   .card-history .ch-card{
-     flex-direction: column;
-    height: 100%;
+    position: relative !important;
+    top: auto !important;
+    height: auto !important;
+    flex-direction: column;
+    margin-top: 0 !important;
   }
-  
+
+  .card-history .ch-card + .ch-card{
+    margin-top: 2rem !important;
+  }
+
+  /* Mantengo tu orden original */
+  .card-history .ch-card.is-reverse{
+    flex-direction: column-reverse;
+  }
+
+  .only-mobile{
+    display: flex;
+  }
+
+  .only-desktop{
+    display: none;
+  }
+
   .ch-content-1{
-    width:100%;
+    width: 100%;
   }
- 
- .card-history .header-history {
+
+  .card-history .header-history{
     justify-content: space-between;
     margin-bottom: 0;
     width: 100%;
-}
+  }
 
-.card-history .ch-card.is-reverse .ch-content-1{
-  order:1;
-}
+  .card-history .ch-card.is-reverse .ch-content-1{
+    order: 1;
+  }
 
-.card-history .ch-stack > .ch-card:last-child{
+  /* Mantengo tu regla especial del último bloque */
+  .card-history .ch-stack > .ch-card:last-child{
     display: flex;
     flex-direction: column-reverse;
   }
+
+  .ch-stack > .ch-card:last-child .ch-content-1.only-mobile{
+    order: 1;
+  }
+
+  .card-history .image-wrapper{
+    padding: 10px;
+  }
   
-  .ch-stack > .ch-card:last-child .ch-content-1.only-mobile {
-order:1}
-
-.card-history .image-wrapper{
-  padding:10px;
+  .card-history .image-container{
+    max-height:28rem;
+  }
+  
+  /* 3ra imagen del bloque historia: cambiar encuadre, no mover el img */
+.card-history .ch-stack > .ch-card:nth-child(3) .image-container {
+  height: 28rem ;
+  max-height: 28rem ;
+  overflow: hidden ;
 }
 
-.card-history .ch-stack {
-padding-bottom:4rem;
+.card-history .ch-stack > .ch-card:nth-child(3) .image-container img {
+  width: 100% ;
+  height: 100% ;
+  object-fit: cover ;
+  object-position: center 70%;
+}
 }
 
-}

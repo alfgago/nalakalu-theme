@@ -48,7 +48,7 @@ $classes   .= ' has-' . $count;
       <?php if ($desc): ?>
         
          <div class="locations__aside">
-  <a href="<?php echo esc_url( home_url('/ubicaciones/') ); ?>" class="desktop-solo btn btn-outline-cafe">Ver ubicaciones <img class="cta-arrow" src="<?php echo esc_url($arrow_url); ?>" alt="" aria-hidden="true" /></a>
+  <a href="<?php echo esc_url( home_url('/showrooms/') ); ?>" class="desktop-solo btn btn-outline-cafe">Ver ubicaciones <img class="cta-arrow" src="<?php echo esc_url($arrow_url); ?>" alt="" aria-hidden="true" /></a>
   <?php if ($desc): ?>
     <p class="font-body-medium-light"><?php echo wp_kses_post( $desc ); ?></p>
   <?php endif; ?>
@@ -102,6 +102,6 @@ $classes   .= ' has-' . $count;
         <?php endif; ?>
       <?php endif; ?>
     </div>
-    <a href="<?php echo esc_url( home_url('/ubicaciones/') ); ?>" class="mobile-only btn btn-outline-cafe">Ver ubicaciones </a>
+    <a href="<?php echo esc_url( home_url('/showrooms/') ); ?>" class="mobile-only btn btn-outline-cafe">Ver ubicaciones </a>
   </div>
 </section>

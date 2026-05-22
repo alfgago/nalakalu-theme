@@ -299,6 +299,11 @@
 
 /* Mobile */
 @media (max-width: 768px) {
+  
+  .toggle-immersive .accordion-content p {
+  font-size: 1.8rem;
+}
+  
   .toggle-immersive .main-section {
     display: flex;
     flex-direction: column !important;
@@ -319,7 +324,7 @@
   }
 
   .toggle-immersive .image-side {
-    height: var(--image-mobile-height, 52vh);
+    height: 200px;
     order: 1;
   }
 
@@ -363,7 +368,7 @@
     width: 100%;
     min-height: auto;
     border-radius: 0;
-    padding: 2rem 1.5rem;
+    padding: 4rem 1.5rem;
   }
 
   .toggle-immersive .accordion-item {
@@ -403,7 +408,7 @@
   }
 
   .toggle-immersive .accordion-item.active .font-heading-2 {
-    font-size: 2.4rem;
+    font-size: 3rem;
   }
 
   .toggle-immersive .accordion-thumbnail {
@@ -421,7 +426,7 @@
   .toggle-immersive .accordion-content.active {
     max-width: none;
     width: 100%;
-    max-height: 700px;
+    max-height: 800px;
     padding-left: 0;
     padding-bottom: 16px;
     opacity: 1;
@@ -444,5 +449,10 @@
 
   .toggle-immersive .accordion-item:not(.active) .font-heading-2 {
     margin-top: .2rem;
+    font-size:3rem;
   }
+  
+   .toggle-immersive .image-stage {
+   max-height:200px;
+   }
 }

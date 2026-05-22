@@ -13,7 +13,26 @@
 
 .pcarousel .carousel-section { position:relative; }
 .pcarousel .carousel-header {display:flex; justify-content:flex-end; gap:1rem; margin-bottom:2rem;}
-.pcarousel .carousel-btn {width:60px; height:60px; border:1px solid #2c2c2c; border-radius:50%;background:none; cursor:pointer; display:flex; align-items:center; justify-content:center;transition:all .3s; font-size:1.25rem;padding-bottom: 0.7rem;}
+.pcarousel .carousel-btn {padding-top: .6rem;
+    width: 45px;
+    height: 45px;
+    border: 1px solid #2c2c2c;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .3s;
+    font-size: .8rem;
+    padding-bottom: 0.7rem;}
+    
+    .pcarousel svg{
+      width: 15px;
+    height: 15px;
+    margin: 0;
+    padding: 0;
+    }
 .pcarousel .carousel-btn:hover { background-color:#2c2c2c; color:#f5f1ed; }
 .pcarousel .carousel-btn:disabled { opacity:.3; cursor:not-allowed; }
 
@@ -55,7 +74,7 @@
   .pcarousel .container{ padding:2rem; }
   .pcarousel .product-card{ min-width:calc((100% - 2rem)/2); }
   .pcarousel .tabs{ width: 100%; justify-content: space-between; }
-  .pcarousel .tab{ font-size:1rem; }
+  .pcarousel .tab{ font-size:1.7rem; }
   .carousel-section .btn{ margin-top:3rem; display:flex; }
 
   .pcarousel .nav-buttons{ display:none; }
@@ -64,7 +83,11 @@
   .pcarousel .product-image {height: 34rem;}
   .desktop-only{display:none;}
   .pcarousel .font-button{font-size: 2rem; max-width: 100%; line-height: 2rem;}
-  .product-card .font-overline{font-size:1.5rem; margin-top:.3rem}
+  .product-card .font-overline{font-size:2rem; margin-top:.3rem}
+  
+  .pcarousel .product-name{
+    max-width:60%;
+  }
 }
 @media (max-width: 480px){
   .pcarousel .product-card{ min-width:100%; }

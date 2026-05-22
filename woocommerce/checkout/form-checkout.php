@@ -44,7 +44,6 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
     <aside class="nlk-checkout-right">
       <div class="nlk-card nlk-card--totals">
         <h2 class="nlk-card__title"><?php esc_html_e('Totales del carrito','woocommerce'); ?></h2>
-
         <?php do_action( 'woocommerce_checkout_before_order_review' ); ?>
 
         <div id="order_review" class="woocommerce-checkout-review-order">

@@ -62,6 +62,42 @@
 .text-video-hero .is-muted .nl-icon--vol{ display: none; }
 .text-video-hero .is-muted .nl-icon--muted{ display: inline-block; }
 
+.nl-player {
+  position: relative;
+  overflow: hidden;
+}
+
+.nl-player__media {
+  position: relative;
+  z-index: 1;
+}
+
+.nl-player__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity .35s ease;
+}
+
+.nl-player.is-playing .nl-player__poster {
+  opacity: 0;
+}
+
+.nl-player__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.nl-controls {
+  position: absolute;
+  z-index: 4;
+}
 
 
 @media (max-width: 768px){
@@ -72,4 +108,19 @@
   .text-video-hero .text-content{ font-size: 14px; }
   .text-video-hero .font-body-medium-light {text-align:left;}
   .text-video-hero .hero-section { min-height: auto;}
+  .text-video-hero .nl-player__overlay{
+    width:50px;
+    height: 50px;
+    top: 45%;
+  }
+  .text-video-hero .nl-player__overlay::after{
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 15px solid black;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    margin: 0;
+    transform: translateX(1px);
+  }
 }
