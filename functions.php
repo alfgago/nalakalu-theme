@@ -13,6 +13,8 @@ if (! defined('_S_VERSION')) {
 	define('_S_VERSION', '1.0.0');
 }
 
+require get_template_directory() . '/inc/public-ajax-security.php';
+
 /**
  * Sets up theme defaults and registers support for various WordPress features.
  *
@@ -771,7 +773,7 @@ if (!function_exists('nlk_shop__get_default_banner_url')) {
 // AJAX Handler
 if (!function_exists('nlk_shop_ajax_filter')) {
   function nlk_shop_ajax_filter() {
-    check_ajax_referer('nlk_shop_nonce', 'nonce');
+    nlk_public_ajax_check_nonce('nlk_shop_nonce', 'nonce', 'post');
 
     if (!class_exists('WooCommerce')) {
       wp_send_json_error(['message' => 'WooCommerce no está activo.']);
@@ -955,12 +957,7 @@ add_action('wp_ajax_nlk_product_search', 'nlk_product_search');
 add_action('wp_ajax_nopriv_nlk_product_search', 'nlk_product_search');
 
 function nlk_product_search() {
-  if (
-    isset($_GET['nonce']) &&
-    !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'])), 'nlk_product_search')
-  ) {
-    wp_send_json_error(['message' => 'Invalid nonce'], 403);
-  }
+  nlk_public_ajax_check_nonce('nlk_product_search', 'nonce', 'get');
 
   $term = isset($_GET['term']) ? sanitize_text_field(wp_unslash($_GET['term'])) : '';
   $term = trim($term);
@@ -1206,7 +1203,7 @@ if ( ! function_exists('nlk_shop__get_pagination_html') ) {
 }
 
 function nlk_shop_filter_breadcrumbs() {
-  check_ajax_referer('nlk_shop_nonce', 'nonce');
+  nlk_public_ajax_check_nonce('nlk_shop_nonce', 'nonce', 'post');
 
   $term_id      = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
   $showroom_id  = isset($_POST['showroom_id']) ? absint($_POST['showroom_id']) : 0;
