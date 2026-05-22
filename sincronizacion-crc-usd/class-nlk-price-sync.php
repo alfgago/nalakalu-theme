@@ -13,6 +13,7 @@ class NLK_Price_Sync {
 		// AJAX: actualización masiva manual desde admin
 		add_action( 'wp_ajax_nlk_crc_usd_sync_all', array( __CLASS__, 'ajax_sync_all' ) );
 		add_action( 'wp_ajax_nlk_crc_usd_backfill', array( __CLASS__, 'ajax_backfill' ) );
+		add_action( 'update_option_nlk_crc_usd_tipo_cambio_manual', array( __CLASS__, 'sync_all_after_manual_rate_change' ), 10, 3 );
 	}
 
 	/**
@@ -27,6 +28,43 @@ class NLK_Price_Sync {
 			return 0;
 		}
 		return round( $precio_crc / $tipo_cambio, 2 );
+	}
+
+	/**
+	 * Updates only the WooCommerce USD price meta fields controlled by this module.
+	 *
+	 * @param int   $product_id Product or variation ID.
+	 * @param float $precio_usd Converted USD price.
+	 */
+	private static function update_usd_price_meta( $product_id, $precio_usd ) {
+		$price_meta_keys = array( '_regular_price', '_price' );
+
+		foreach ( $price_meta_keys as $meta_key ) {
+			update_post_meta( $product_id, $meta_key, $precio_usd );
+		}
+	}
+
+	/**
+	 * Clears WooCommerce price caches without changing product data.
+	 *
+	 * @param int $product_id Product or variation ID.
+	 */
+	private static function clear_product_price_cache( $product_id ) {
+		if ( function_exists( 'wc_delete_product_transients' ) ) {
+			wc_delete_product_transients( $product_id );
+		}
+
+		if ( ! function_exists( 'wc_get_product' ) ) {
+			return;
+		}
+
+		$product = wc_get_product( $product_id );
+		if ( $product && $product->is_type( 'variation' ) ) {
+			$parent_id = $product->get_parent_id();
+			if ( $parent_id && function_exists( 'wc_delete_product_transients' ) ) {
+				wc_delete_product_transients( $parent_id );
+			}
+		}
 	}
 
 	/**
@@ -61,23 +99,8 @@ class NLK_Price_Sync {
 			return;
 		}
 
-		// Actualizar campos estándar de WooCommerce
-		update_post_meta( $product_id, '_regular_price', $precio_usd );
-		update_post_meta( $product_id, '_price', $precio_usd );
-
-		// Limpiar cache de WooCommerce para este producto
-		$product = wc_get_product( $product_id );
-		if ( $product ) {
-			wc_delete_product_transients( $product_id );
-
-			// Si es variación, también limpiar el padre
-			if ( $product->is_type( 'variation' ) ) {
-				$parent_id = $product->get_parent_id();
-				if ( $parent_id ) {
-					wc_delete_product_transients( $parent_id );
-				}
-			}
-		}
+		self::update_usd_price_meta( $product_id, $precio_usd );
+		self::clear_product_price_cache( $product_id );
 	}
 
 	/**
@@ -100,11 +123,16 @@ class NLK_Price_Sync {
 
 		global $wpdb;
 
-		// Obtener todos los post IDs que tienen _precio_crc > 0
+		// Obtener solo productos y variaciones que tienen _precio_crc > 0.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT post_id, meta_value FROM {$wpdb->postmeta}
-				 WHERE meta_key = %s AND meta_value > 0",
+				"SELECT pm.post_id, pm.meta_value
+				 FROM {$wpdb->postmeta} pm
+				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				 WHERE pm.meta_key = %s
+				   AND pm.meta_value > 0
+				   AND p.post_type IN ('product', 'product_variation')
+				   AND p.post_status IN ('publish', 'draft', 'private')",
 				NLK_Product_Meta::META_KEY
 			)
 		);
@@ -135,9 +163,8 @@ class NLK_Price_Sync {
 				continue;
 			}
 
-			update_post_meta( $product_id, '_regular_price', $precio_usd );
-			update_post_meta( $product_id, '_price', $precio_usd );
-			wc_delete_product_transients( $product_id );
+			self::update_usd_price_meta( $product_id, $precio_usd );
+			self::clear_product_price_cache( $product_id );
 
 			$updated++;
 		}
@@ -155,6 +182,29 @@ class NLK_Price_Sync {
 			'skipped' => $skipped,
 			'tc_used' => $tc,
 		);
+	}
+
+	/**
+	 * Sync all product prices when the manual exchange rate changes in manual mode.
+	 *
+	 * @param mixed  $old_value Previous option value.
+	 * @param mixed  $new_value New option value.
+	 * @param string $option    Option name.
+	 */
+	public static function sync_all_after_manual_rate_change( $old_value, $new_value, $option = '' ) {
+		if ( 'nlk_crc_usd_tipo_cambio_manual' !== $option ) {
+			return;
+		}
+
+		if ( get_option( 'nlk_crc_usd_modo', 'manual' ) !== 'manual' ) {
+			return;
+		}
+
+		if ( (float) $old_value === (float) $new_value || (float) $new_value <= 0 ) {
+			return;
+		}
+
+		self::sync_all_products();
 	}
 
 	/**
@@ -180,72 +230,11 @@ class NLK_Price_Sync {
 	 * @return array Resultado con conteo.
 	 */
 	public static function backfill_crc_from_usd() {
-		$tc = NLK_Exchange_Rate::get_active_rate();
-
-		if ( $tc <= 0 ) {
-			return array(
-				'success' => false,
-				'message' => 'No hay tipo de cambio configurado. Defínalo antes de ejecutar la carga inicial.',
-				'filled'  => 0,
-				'skipped' => 0,
-			);
-		}
-
-		global $wpdb;
-
-		// Productos/variaciones que tienen _price pero NO tienen _precio_crc (o es 0/vacío)
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT pm.post_id, pm.meta_value AS usd_price
-				 FROM {$wpdb->postmeta} pm
-				 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-				 WHERE pm.meta_key = '_price'
-				   AND pm.meta_value > 0
-				   AND p.post_type IN ('product', 'product_variation')
-				   AND p.post_status IN ('publish', 'draft', 'private')
-				   AND pm.post_id NOT IN (
-				       SELECT post_id FROM {$wpdb->postmeta}
-				       WHERE meta_key = %s AND meta_value > 0
-				   )",
-				NLK_Product_Meta::META_KEY
-			)
-		);
-
-		$filled  = 0;
-		$skipped = 0;
-
-		foreach ( $results as $row ) {
-			$product_id = intval( $row->post_id );
-			$usd_price  = floatval( $row->usd_price );
-
-			if ( $usd_price <= 0 ) {
-				$skipped++;
-				continue;
-			}
-
-			// Saltar productos marcados como USD fijo
-			if ( get_post_meta( $product_id, NLK_Product_Meta::FIXED_USD_KEY, true ) === 'yes' ) {
-				$skipped++;
-				continue;
-			}
-
-			$precio_crc = round( $usd_price * $tc, 2 );
-			update_post_meta( $product_id, NLK_Product_Meta::META_KEY, $precio_crc );
-
-			$filled++;
-		}
-
 		return array(
-			'success' => true,
-			'message' => sprintf(
-				'Carga inicial completada. %d productos rellenados con precio CRC (T/C: ₡%s), %d omitidos.',
-				$filled,
-				number_format( $tc, 2 ),
-				$skipped
-			),
-			'filled'  => $filled,
-			'skipped' => $skipped,
-			'tc_used' => $tc,
+			'success' => false,
+			'message' => 'La carga inicial desde USD está deshabilitada para evitar cambios en datos del producto fuera de los precios USD.',
+			'filled'  => 0,
+			'skipped' => 0,
 		);
 	}
 

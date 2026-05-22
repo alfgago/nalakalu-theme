@@ -23,6 +23,7 @@ class NLK_Cron {
 
 		// Re-programar cron cuando se guardan las opciones
 		add_action( 'update_option_nlk_crc_usd_frecuencia', array( __CLASS__, 'reschedule' ) );
+		add_action( 'update_option_nlk_crc_usd_modo', array( __CLASS__, 'reschedule' ) );
 
 		// Programar en activación del tema (si no existe)
 		add_action( 'after_setup_theme', array( __CLASS__, 'maybe_schedule' ) );
@@ -45,6 +46,11 @@ class NLK_Cron {
 	 * Programa el cron si no está programado.
 	 */
 	public static function maybe_schedule() {
+		if ( get_option( 'nlk_crc_usd_modo', 'manual' ) !== 'auto' ) {
+			self::unschedule();
+			return;
+		}
+
 		if ( ! wp_next_scheduled( self::HOOK_NAME ) ) {
 			$frecuencia = get_option( 'nlk_crc_usd_frecuencia', 'daily' );
 			wp_schedule_event( time(), $frecuencia, self::HOOK_NAME );
@@ -59,6 +65,10 @@ class NLK_Cron {
 		$timestamp = wp_next_scheduled( self::HOOK_NAME );
 		if ( $timestamp ) {
 			wp_unschedule_event( $timestamp, self::HOOK_NAME );
+		}
+
+		if ( get_option( 'nlk_crc_usd_modo', 'manual' ) !== 'auto' ) {
+			return;
 		}
 
 		// Re-programar con nueva frecuencia

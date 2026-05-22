@@ -110,16 +110,6 @@ class NLK_Admin_Settings {
 			}
 		}
 
-		// Carga inicial: backfill CRC desde USD existentes
-		if ( isset( $_GET['nlk_action'] ) && $_GET['nlk_action'] === 'backfill' ) {
-			check_admin_referer( 'nlk_crc_usd_backfill' );
-			$result = NLK_Price_Sync::backfill_crc_from_usd();
-			if ( $result['success'] ) {
-				add_settings_error( 'nlk_crc_usd', 'backfill_ok', $result['message'], 'success' );
-			} else {
-				add_settings_error( 'nlk_crc_usd', 'backfill_error', $result['message'], 'error' );
-			}
-		}
 	}
 
 	/**
@@ -168,11 +158,6 @@ class NLK_Admin_Settings {
 		$sync_url = wp_nonce_url(
 			admin_url( 'admin.php?page=' . self::PAGE_SLUG . '&nlk_action=sync_all' ),
 			'nlk_crc_usd_sync_all'
-		);
-
-		$backfill_url = wp_nonce_url(
-			admin_url( 'admin.php?page=' . self::PAGE_SLUG . '&nlk_action=backfill' ),
-			'nlk_crc_usd_backfill'
 		);
 
 		// Conteos para info
@@ -300,19 +285,6 @@ class NLK_Admin_Settings {
 					</a>
 				</p>
 
-				<?php if ( $without_crc > 0 ) : ?>
-				<hr style="margin:15px 0;" />
-				<h3 style="margin-top:0;">Carga inicial de precios CRC</h3>
-				<p class="description" style="margin-bottom:10px;">
-					Hay <strong><?php echo esc_html( $without_crc ); ?> productos</strong> con precio USD pero sin precio en colones.
-					Esta acción calcula el precio CRC a partir del precio USD actual usando el tipo de cambio activo
-					(CRC = USD &times; T/C). Solo afecta productos que no tienen precio CRC y que no están marcados como "USD fijo".
-				</p>
-				<a href="<?php echo esc_url( $backfill_url ); ?>" class="button"
-				   onclick="return confirm('¿Rellenar precio CRC para <?php echo esc_attr( $without_crc ); ?> productos sin CRC? Esto NO cambia el precio USD.');">
-					Rellenar precios CRC desde USD existente
-				</a>
-				<?php endif; ?>
 			</div>
 
 			<!-- Formulario de configuración -->
@@ -351,6 +323,7 @@ class NLK_Admin_Settings {
 								   step="0.01" min="0" class="regular-text" />
 							<p class="description">
 								Ej: 530.50 significa que $1 USD = ₡530.50. Se usa en modo manual o como respaldo del modo automático.
+								En modo manual, al cambiar este valor se sincronizan automáticamente los precios USD desde los precios CRC.
 							</p>
 						</td>
 					</tr>
@@ -365,7 +338,7 @@ class NLK_Admin_Settings {
 								<option value="weekly" <?php selected( $frecuencia, 'weekly' ); ?>>Semanal</option>
 							</select>
 							<p class="description">
-								Con qué frecuencia el cron actualizará automáticamente los precios USD de todos los productos.
+								Solo aplica en modo automático. En modo manual no se programa cron recurrente.
 							</p>
 						</td>
 					</tr>
